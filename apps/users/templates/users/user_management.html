@@ -1,0 +1,227 @@
+{% extends 'base_admin.html' %}
+{% load static %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/users/user_management.css' %}">
+{% endblock %}
+
+{% block content %}
+<h1 class="section-title">User Management</h1>
+
+<div class="user-management-layout">
+    <div class="user-management-panel">
+        <!-- Action buttons for Add, Update, Delete -->
+        <div class="action-buttons">
+            <!-- <button class="add-user-btn" onclick="openModal()">Add User</button> -->
+            <button class="update-btn" onclick="populateFormForUpdate()">Update</button>
+            <button class="delete-btn" onclick="deleteSelected()">Delete</button>
+        </div>
+
+        <!-- Search Bar for filtering users -->
+        <input type="text" class="search-input" placeholder="Search users..." />
+
+        <!-- Table displaying users -->
+        <div class="table-wrapper">
+            <table class="user-management-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="select-all"></th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <!-- <th>Created At</th>
+                        <th>Updated At</th> -->
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td><input type="checkbox" class="user-checkbox" data-id="{{ user.id }}"></td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.get_role_display }}</td>  <!-- Assuming roles are choices in the model -->
+                        <!-- <td>{{ user.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>{{ user.updated_at|date:"Y-m-d H:i" }}</td> -->
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Modal Overlay for Adding/Updating User -->
+        <div id="formModal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-btn" onclick="closeModal()">&times;</span>
+                <h2>Add User</h2>
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="user_id" id="hidden-user-id">
+                
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" name="username" id="username" required>
+                    </div>
+                
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" name="email" id="email" required>
+                    </div>
+                
+                    <div class="form-group">
+                        <label for="role">Role</label>
+                        <select name="role" id="role" required>
+                            <option value="admin">Admin</option>
+                            <option value="manager">Manager</option>
+                            <option value="staff">Staff</option>
+                            <option value="delivery">Delivery Confirmation</option>
+                        </select>
+                    </div>
+                
+                    <button type="submit" class="submit-btn">Save</button>
+                </form>
+                                            
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Open modal for adding/updating user
+    function openModal() {
+        document.getElementById("formModal").classList.remove("hidden");
+    }
+
+    // Populate form with selected user's details for updating
+    function populateFormForUpdate() {
+        const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+
+        if (selectedCheckboxes.length !== 1) {
+            alert("Please select exactly one user to update.");
+            return;
+        }
+
+        const selectedRow = selectedCheckboxes[0].closest('tr');
+        const cells = selectedRow.querySelectorAll('td');
+
+        const user = {
+            id: selectedCheckboxes[0].dataset.id,
+            username: cells[1].textContent.trim(),
+            email: cells[2].textContent.trim(),
+            role: cells[3].textContent.trim()
+        };
+
+        // Fill the form fields
+        document.getElementById("hidden-user-id").value = user.id;
+        document.getElementById("username").value = user.username;
+        document.getElementById("email").value = user.email;
+
+        // Match display label with value
+        const roleSelect = document.getElementById("role");
+        for (let option of roleSelect.options) {
+            if (option.text.trim().toLowerCase() === user.role.toLowerCase()) {
+                roleSelect.value = option.value;
+                break;
+            }
+        }
+
+        document.querySelector(".submit-btn").textContent = "Update User";
+        openModal();
+    }
+
+    // Close the modal and reset the form
+    function closeModal() {
+        document.getElementById("formModal").classList.add("hidden");
+
+        document.getElementById("hidden-user-id").value = "";
+        document.getElementById("username").value = "";
+        document.getElementById("email").value = "";
+        document.getElementById("role").selectedIndex = 0;
+
+        document.querySelector('.submit-btn').textContent = 'Add User';
+    }
+
+    // Search through the user list based on input
+    document.querySelector('.search-input').addEventListener('input', function (e) {
+        const keyword = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('.user-management-table tbody tr');
+
+        rows.forEach(row => {
+            const [checkbox, username, email, role] = row.children;
+            const usernameText = username.textContent.toLowerCase();
+            const emailText = email.textContent.toLowerCase();
+            const roleText = role.textContent.toLowerCase();
+
+            if (usernameText.includes(keyword) || emailText.includes(keyword) || roleText.includes(keyword)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // Handle deletion of selected users
+    function deleteSelected() {
+        const checkboxes = document.querySelectorAll('.user-checkbox:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+
+        if (ids.length === 0) {
+            alert("Please select at least one user to delete.");
+            return;
+        }
+
+        if (!confirm("Are you sure you want to delete the selected users?")) {
+            return;
+        }
+
+        fetch("{% url 'users:delete_users' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ ids })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert("Failed to delete users.");
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("An error occurred while deleting.");
+        });
+    }
+
+    // Utility to get CSRF token from cookies
+    function getCSRFToken() {
+        let cookieValue = null;
+        const name = 'csrftoken';
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Select or deselect all checkboxes
+    document.addEventListener('DOMContentLoaded', function () {
+        const selectAllCheckbox = document.getElementById('select-all');
+        const checkboxes = document.querySelectorAll('.user-checkbox');
+
+        selectAllCheckbox.addEventListener('change', function () {
+            checkboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+        });
+    });
+</script>
+
+
+{% endblock %}

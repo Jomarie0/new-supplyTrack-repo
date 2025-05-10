@@ -1,0 +1,85 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{% block title %}Admin | Panel{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/base/base_admin/base_admin.css' %}">
+    {% block styles %}{% endblock %}
+</head>
+<body>
+
+    <!-- Sidebar Toggle Button -->
+    <button class="btn-toggle" onclick="toggleSidebar()">☰</button>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+        <nav class="sidebar-nav">
+            <ul class="menu">
+                <li><a href="{% url 'inventory:admin_dashboard' %}" class="menu-item">Dashboard</a></li>
+                <li><a href="{% url 'inventory:inventory_list' %}" class="menu-item">Inventory</a></li>
+    
+                <!-- Dropdown Menu for Orders -->
+                <li class="dropdown">
+                    <button class="dropdown-toggle" onclick="toggleDropdown()">
+                        Order ▼
+                    </button>
+                    <ul id="orderDropdown" class="dropdown-menu {% if request.resolver_match.url_name == 'order_list' or request.resolver_match.url_name == 'purchase_order_list' %}open{% else %}hidden{% endif %}">
+                        <li>
+                            <a href="{% url 'orders:order_list' %}" class="submenu-item {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}">
+                                Customer Orders
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'PO:purchase_order_list' %}" class="submenu-item {% if request.resolver_match.url_name == 'purchase_order_list' %}active{% endif %}">
+                                Purchase Orders
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+    
+                <li><a href="{% url 'users:user_management' %}" class="menu-item">Users</a></li>
+                <li><a href="{% url 'delivery:delivery_list' %}" class="menu-item">Delivery</a></li>
+
+                <li><a href="{% url 'users:logout_view' %}" class="menu-item">Logout</a></li>
+            </ul>
+        </nav>
+    </aside>
+    
+        <!-- Main Content -->
+    <main id="content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        // To keep track of the current state of the dropdown
+        let isDropdownOpen = false;
+    
+        function toggleDropdown() {
+            const dropdownMenu = document.getElementById('orderDropdown');
+    
+            // If the dropdown is open, close it, otherwise open it
+            if (isDropdownOpen) {
+                dropdownMenu.classList.add('hidden');
+            } else {
+                dropdownMenu.classList.remove('hidden');
+            }
+    
+            // Toggle the open state
+            isDropdownOpen = !isDropdownOpen;
+        }
+    
+        // Optional: Close dropdown when clicking outside of the sidebar
+        document.addEventListener('click', function (e) {
+            const sidebar = document.getElementById('sidebar');
+            const isClickInsideSidebar = sidebar.contains(e.target);
+    
+            // If the click is outside the sidebar, close the dropdown
+            if (!isClickInsideSidebar) {
+                document.getElementById('orderDropdown').classList.add('hidden');
+                isDropdownOpen = false;
+            }
+        });
+    </script>
+        
+</body>
+</html>

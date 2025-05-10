@@ -1,0 +1,225 @@
+{% extends 'base_admin.html' %}
+{% load static %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/inventory/inventory.css' %}">
+{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Inventory</h1>
+
+<div class="action-buttons">
+    <button class="add-product-btn" onclick="openModal()">Add Product</button>
+    <button class="update-btn" onclick="populateFormForUpdate()">Update</button>
+    <button class="delete-btn" onclick="deleteSelected()">Delete</button>
+</div>
+
+<!-- Search Bar -->
+<input type="text" class="search-input" placeholder="Search products..." />
+
+<!-- Scrollable Table -->
+<div class="table-wrapper">
+    <table class="inventory-table">
+        <thead>
+            <tr>
+                <th><input type="checkbox" id="select-all"></th>
+                <th>Product ID</th>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Supplier</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Reorder Level</th>
+                <th>Unit</th>
+                <th>Category</th>
+                <th>Created At</th>
+                <th>Updated At</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td><input type="checkbox" class="product-checkbox" data-id="{{ product.id }}"></td>
+                <td>{{ product.product_id }}</td>
+                <td>{{ product.name }}</td>
+                <td>{{ product.description }}</td>
+                <td>{{ product.supplier.name }}</td>
+                <td>{{ product.price }}</td>
+                <td>{{ product.stock_quantity }}</td>
+                <td>{{ product.reorder_level }}</td>
+                <td>{{ product.unit }}</td>
+                <td>{{ product.category }}</td>
+                <td>{{ product.created_at|date:"Y-m-d H:i" }}</td>
+                <td>{{ product.updated_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="12">No products available.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div id="formModal" class="modal hidden">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2 id="modal-title">Add Product</h2>
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" id="hidden-product-id">
+            {{ form.as_p }}
+            <button type="submit" class="submit-btn">Save</button>
+        </form>                              
+    </div>
+</div>
+
+</div>
+
+<script>
+    // Open the modal for Add Product
+    function openModal() {
+        document.getElementById("formModal").classList.remove("hidden");
+    }
+
+    // Populate the form for Update Product
+    function populateFormForUpdate() {
+        const selectedCheckboxes = document.querySelectorAll('.product-checkbox:checked');
+
+        if (selectedCheckboxes.length !== 1) {
+            alert("Please select exactly one product to update.");
+            return;
+        }
+
+        const selectedRow = selectedCheckboxes[0].closest('tr');
+        const cells = selectedRow.querySelectorAll('td');
+
+        const product = {
+            product_id: cells[1].textContent.trim(),
+            name: cells[2].textContent.trim(),
+            description: cells[3].textContent.trim(),
+            supplier: cells[4].textContent.trim(),
+            price: cells[5].textContent.trim(),
+            stock_quantity: cells[6].textContent.trim(),
+            reorder_level: cells[7].textContent.trim(),
+            unit: cells[8].textContent.trim(),
+            category: cells[9].textContent.trim(),
+        };
+
+        // Fill form fields
+        document.getElementById("hidden-product-id").value = product.product_id;
+        document.querySelector("input[name='name']").value = product.name;
+        document.querySelector("textarea[name='description']").value = product.description;
+        document.querySelector("select[name='supplier']").value = getSupplierId(product.supplier);
+        document.querySelector("input[name='price']").value = product.price;
+        document.querySelector("input[name='stock_quantity']").value = product.stock_quantity;
+        document.querySelector("input[name='reorder_level']").value = product.reorder_level;
+        document.querySelector("input[name='unit']").value = product.unit;
+        document.querySelector("input[name='category']").value = product.category;
+
+        // Change title and button
+        document.getElementById("modal-title").textContent = "Update Product";
+        document.querySelector(".submit-btn").textContent = "Update";
+
+        openModal();
+    }
+
+    
+    // Optional: Implement logic to match supplier names to IDs
+    function getSupplierId(supplierName) {
+        const options = document.querySelector("select[name='supplier']").options;
+        for (let option of options) {
+            if (option.text.trim() === supplierName) {
+                return option.value;
+            }
+        }
+        return '';
+    }
+           
+
+    // Close the modal
+    function closeModal() {
+        document.getElementById("formModal").classList.add("hidden");
+        document.getElementById("modal-title").textContent = "Add Product";
+        document.getElementById("hidden-product-id").value = "";
+        document.querySelector(".submit-btn").textContent = "Save";
+
+        // Optional: reset other fields
+        document.querySelector("form").reset();
+    }
+
+    // Search functionality
+    document.querySelector('.search-input').addEventListener('input', function (e) {
+        const keyword = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('.inventory-table tbody tr');
+    
+        rows.forEach(row => {
+            const [checkbox, id, name, desc] = row.children;
+            const idText = id.textContent.toLowerCase();
+            const nameText = name.textContent.toLowerCase();
+            const descText = desc.textContent.toLowerCase();
+    
+            if (idText.includes(keyword) || nameText.includes(keyword) || descText.includes(keyword)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // CSRF Token helper
+    function getCSRFToken() {
+        return document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+    }
+    
+    // Delete selected products
+    function deleteSelected() {
+        const checkboxes = document.querySelectorAll('.product-checkbox:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+    
+        if (ids.length === 0) {
+            alert("Please select at least one product to delete.");
+            return;
+        }
+    
+        if (!confirm("Are you sure you want to delete the selected products?")) {
+            return;
+        }
+    
+        fetch("{% url 'inventory:delete_products' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ ids })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload(); // Refresh page after successful deletion
+            } else {
+                alert("Failed to delete products.");
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("An error occurred while deleting.");
+        });
+    }
+
+    // Select all checkboxes logic
+    document.addEventListener('DOMContentLoaded', function () {
+        const selectAllCheckbox = document.getElementById('select-all');
+        const checkboxes = document.querySelectorAll('.product-checkbox');
+    
+        selectAllCheckbox.addEventListener('change', function () {
+            checkboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+        });
+    });
+</script>
+
+{% endblock %}

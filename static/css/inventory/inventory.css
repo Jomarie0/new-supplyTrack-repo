@@ -1,0 +1,248 @@
+/* Layout container */
+.inventory-layout {
+    display: flex;
+    justify-content: flex-start;
+    gap: 30px;
+    padding: 20px;
+    flex-wrap: wrap;
+    width: 80%;
+    box-sizing: border-box;
+    margin-left: 290px;
+}
+
+/* Inventory panel */
+.inventory-panel {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    flex: 1 1 600px;
+    min-width: 300px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+    position: relative;
+}
+
+/* Search bar */
+.search-input {
+    width: 100%;
+    max-width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    margin-bottom: 20px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+/* Container for action buttons */
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+/* Add product button */
+.add-product-btn {
+    padding: 10px 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.add-product-btn:hover {
+    background-color: #0056b3;
+}
+
+/* Delete button */
+.delete-btn {
+    padding: 10px 16px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.delete-btn:hover {
+    background-color: #a71d2a;
+}
+
+/* Table wrapper */
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.inventory-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+}
+
+.inventory-table th,
+.inventory-table td {
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    text-align: left;
+    font-size: 14px;
+}
+
+.inventory-table th {
+    background-color: #f9f9f9;
+    font-weight: 600;
+}
+
+.inventory-table tr:nth-child(even) {
+    background-color: #fcfcfc;
+}
+
+.inventory-table tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* Modal overlay */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    padding: 20px;
+}
+
+/* Modal box */
+.modal-content {
+    background: #fff;
+    padding: 30px 25px;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* Modal title */
+.modal-content h2 {
+    margin-top: 0;
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #222;
+    text-align: center;
+}
+
+/* Close button */
+.close-btn {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    font-size: 26px;
+    font-weight: bold;
+    color: #555;
+    cursor: pointer;
+}
+
+.close-btn:hover {
+    color: #000;
+}
+
+.update-btn {
+    padding: 10px 16px;
+    background-color: #ffc107;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+.update-btn:hover {
+    background-color: #e0a800;
+}
+
+/* Form fields */
+.modal-content form p {
+    margin-bottom: 16px;
+}
+
+.modal-content input,
+.modal-content select,
+.modal-content textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fdfdfd;
+    transition: border 0.2s ease-in-out;
+    box-sizing: border-box;
+}
+
+.modal-content input:focus,
+.modal-content select:focus,
+.modal-content textarea:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+/* Submit button */
+.submit-btn {
+    margin-top: 20px;
+    padding: 12px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    width: 100%;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.submit-btn:hover {
+    background-color: #0056b3;
+}
+
+/* Scrollbar styling */
+.modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+.modal-content::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+}
+
+/* Hidden utility class */
+.hidden {
+    display: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .inventory-layout {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .inventory-panel {
+        width: 100%;
+    }
+
+    .modal-content {
+        width: 95%;
+    }
+}

@@ -1,0 +1,186 @@
+{% extends 'base_admin.html' %}
+{% load static %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/orders/orders.css' %}">
+{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Purchase Orders</h1>
+
+<div class="orders-layout">
+  <div class="orders-panel">
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <button class="add-order-btn" onclick="openModal()">Add Purchase Order</button>
+      <button class="update-btn" onclick="populateFormForUpdate()">Update</button>
+      <button class="delete-btn" onclick="deleteSelected()">Delete</button>
+    </div>
+
+    <!-- Search Bar -->
+    <input type="text" class="search-input" placeholder="Search purchase orders..." />
+
+    <!-- Purchase Orders Table -->
+    <div class="table-wrapper">
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="select-all"></th>
+            <th>Purchase Order ID</th>
+            <th>Supplier</th>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Order Date</th>
+            <th>Expected Delivery</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for purchase_order in purchase_orders %}
+          <tr>
+            <td><input type="checkbox" class="order-checkbox" data-id="{{ purchase_order.purchase_order_id }}"></td>
+            <td>{{ purchase_order.purchase_order_id }}</td>
+            <td>{{ purchase_order.supplier.name }}</td>
+            <td>{{ purchase_order.product.name }}</td>
+            <td>{{ purchase_order.quantity }}</td>
+            <td>{{ purchase_order.order_date|date:"Y-m-d H:i" }}</td>
+            <td>{{ purchase_order.expected_delivery|default:"—" }}</td>
+            <td>{{ purchase_order.status }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8">No purchase orders found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div id="formModal" class="modal hidden">
+      <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2>Add / Update Purchase Order</h2>
+        <form method="POST" id="purchase-order-form">
+          {% csrf_token %}
+          <input type="hidden" name="purchase_order_id" id="hidden-purchase-order-id">
+
+          <!-- Form Errors -->
+          {% if form.errors %}
+            <div class="error-messages">
+              <ul>
+                {% for field in form %}
+                  {% for error in field.errors %}
+                    <li>{{ error }}</li>
+                  {% endfor %}
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          {{ form.as_p }}
+
+          <button type="submit" class="submit-btn">Save</button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Open modal
+  window.openModal = function() {
+    document.getElementById('formModal').classList.remove('hidden');
+  };
+
+  // Close modal and reset
+  window.closeModal = function() {
+    document.getElementById('formModal').classList.add('hidden');
+    document.getElementById('hidden-purchase-order-id').value = '';
+    document.querySelector('.submit-btn').textContent = 'Save';
+    // Reset form fields
+    document.getElementById('purchase-order-form').reset();
+  };
+
+  // Populate form for update
+  window.populateFormForUpdate = function() {
+    const sel = document.querySelectorAll('.order-checkbox:checked');
+    if (sel.length !== 1) {
+      return alert('Please select exactly one purchase order to update.');
+    }
+    const row = sel[0].closest('tr');
+    const cells = row.children;
+    const purchase_order = {
+      purchase_order_id: cells[1].textContent.trim(),
+      supplier: cells[2].textContent.trim(),
+      product: cells[3].textContent.trim(),
+      quantity: cells[4].textContent.trim(),
+      expected_delivery: cells[6].textContent.trim(),
+      status: cells[7].textContent.trim()
+    };
+    // Fill hidden ID
+    document.getElementById('hidden-purchase-order-id').value = purchase_order.purchase_order_id;
+    // Set form fields (Django form element IDs)
+    setSelectByText(document.getElementById('id_supplier'), purchase_order.supplier);
+    setSelectByText(document.getElementById('id_product'), purchase_order.product);
+    document.getElementById('id_quantity').value = purchase_order.quantity;
+    document.getElementById('id_expected_delivery').value = purchase_order.expected_delivery === '—' ? '' : purchase_order.expected_delivery;
+    document.getElementById('id_status').value = purchase_order.status;
+    document.querySelector('.submit-btn').textContent = 'Update Purchase Order';
+    openModal();
+  };
+
+  // Helper: Set select input option by visible text
+  function setSelectByText(selectElem, text) {
+    for (let option of selectElem.options) {
+      if (option.text.trim() === text) {
+        selectElem.value = option.value;
+        return;
+      }
+    }
+    selectElem.value = ''; // default if not found
+  }
+
+  // Search filter
+  document.querySelector('.search-input').addEventListener('input', function(e) {
+    const kw = e.target.value.toLowerCase();
+    document.querySelectorAll('.orders-table tbody tr').forEach(row => {
+      const text = Array.from(row.children)
+        .slice(1,5) // Supplier, Product, Quantity included in search
+        .map(td => td.textContent.toLowerCase())
+        .join(' ');
+      row.style.display = text.includes(kw) ? '' : 'none';
+    });
+  });
+
+  // Delete selected purchase orders
+  window.deleteSelected = function() {
+    const ids = Array.from(document.querySelectorAll('.order-checkbox:checked'))
+                    .map(cb => cb.dataset.id);
+    if (!ids.length) return alert('Please select at least one purchase order.');
+    if (!confirm('Delete selected purchase orders?')) return;
+    fetch("{% url 'PO:delete_purchase_orders' %}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': (document.querySelector('[name=csrfmiddlewaretoken]')||{}).value
+      },
+      body: JSON.stringify({ ids })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) location.reload();
+      else alert('Error deleting purchase orders');
+    })
+    .catch(e => alert('Error: ' + e));
+  };
+
+  // Select-all checkbox
+  document.getElementById('select-all').addEventListener('change', function() {
+    document.querySelectorAll('.order-checkbox') 
+      .forEach(cb => cb.checked = this.checked);
+  });
+});
+</script>
+{% endblock %}

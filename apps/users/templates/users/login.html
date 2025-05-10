@@ -1,0 +1,35 @@
+{% extends "base_auth.html" %}
+{% load static %}
+{% block title %}Login{% endblock %}
+{% block content %}
+
+{% if messages %}
+    <ul>
+        {% for message in messages %}
+            <li>{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+<div class="login-container">
+    <div>
+        <h1>Login to your Account</h1>
+        <p>Track, manage, and optimize—effortlessly.</p>
+    </div>    
+    <form method="post" class="login-custom-form">
+        {% csrf_token %}
+        <div class="login-form-input-container">
+            <label for="username">Username:</label>
+            <input type="text" name="username" required>
+        </div>
+        
+        <div class="login-form-input-container">
+            <label for="password">Password:</label>
+            <input type="password" name="password" required>
+            <a href="" class="forgot-pass">forgot password?</a>
+        </div>
+        <button type="submit">Login</button>
+    </form>
+    <a href="{% url 'users:register' %}">Don't have an account? Register</a>
+
+</div>
+{% endblock %}
