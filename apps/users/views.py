@@ -15,6 +15,25 @@ from django.http import HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import json
+import random
+from django.core.mail import send_mail
+from .models import EmailVerification
+from django.shortcuts import get_object_or_404
+import datetime
+from django.utils.timezone import now
+from datetime import timedelta
+
+def generate_verification_code():
+    return str(random.randint(100000, 999999))
+
+def send_verification_email(email, code):
+    send_mail(
+        subject='Verify your email',
+        message=f'Your verification code is: {code}',
+        from_email='no-reply@supplytrack.com',
+        recipient_list=[email],
+    )
+
 class CustomTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
         try:
@@ -80,18 +99,69 @@ class CustomRefreshTokenView(TokenRefreshView):
         
         
 def register_view(request):
-    success = False  # Flag to indicate registration success
+    success = False
     if request.method == "POST":
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            success = True  # Set success flag to True
-            return render(request, "users/register.html", {"form": form, "success": success})
+            user = form.save(commit=False)
+            user.is_active = False
+            user.save()
 
+            code = generate_verification_code()
+            EmailVerification.objects.create(user=user, code=code)
+            send_verification_email(user.email, code)
+
+            # Store user ID in session to verify later
+            request.session['verify_user_id'] = user.id
+            return redirect('users:verify_email')
     else:
         form = CustomUserCreationForm()
-
     return render(request, "users/register.html", {"form": form, "success": success})
+
+
+def verify_email_view(request):
+    user_id = request.session.get('verify_user_id')
+    user = get_object_or_404(User, id=user_id)
+    record = EmailVerification.objects.filter(user=user).first()
+
+    if request.method == 'POST':
+        input_code = request.POST.get('code')
+        if record and not record.is_expired() and record.code == input_code:
+            user.is_active = True
+            user.save()
+            record.delete()
+            messages.success(request, "Email verified successfully!")
+            return redirect('users:login')
+        else:
+            messages.error(request, "Invalid or expired code.")
+
+    # Pass expiration time to template
+    if record:
+        expiration_time = record.created_at + datetime.timedelta(minutes=3)
+    else:
+        expiration_time = now()  # fallback
+
+    return render(request, 'users/verify_email.html', {
+        'expiration_timestamp': int(expiration_time.timestamp() * 1000)  # JS needs ms
+    })
+
+def resend_verification_code_view(request):
+    user_id = request.session.get('verify_user_id')
+    user = get_object_or_404(User, id=user_id)
+
+    # Generate a new code
+    code = generate_verification_code()
+
+    # Delete old record if exists
+    EmailVerification.objects.filter(user=user).delete()
+
+    # Create new record
+    EmailVerification.objects.create(user=user, code=code)
+
+    # Send email
+    send_verification_email(user.email, code)
+    messages.success(request, "A new verification code has been sent.")
+    return redirect('users:verify_email')
 
 def redirect_based_on_role(user):
     if user.role == "admin":

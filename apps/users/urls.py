@@ -9,7 +9,9 @@ from .views import (
     register_view,
     logout_view,
     user_management,
-    delete_users
+    delete_users,
+    verify_email_view,
+    resend_verification_code_view
 )
 
 
@@ -22,6 +24,8 @@ urlpatterns = [
     path('logout/', logout_view, name='logout_view'),
     path('user-management/', user_management, name='user_management'),
     path('delete/', delete_users, name='delete_users'),
+    path('verify/', verify_email_view, name='verify_email'),
+    path('resend-code/', resend_verification_code_view, name='resend_code'),
 
     # API Endpoints
     path('api/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
