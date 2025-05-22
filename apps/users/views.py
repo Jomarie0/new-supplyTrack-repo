@@ -169,7 +169,7 @@ def redirect_based_on_role(user):
     elif user.role == "manager":
         return redirect("inventory:manager_dashboard")
     elif user.role == "staff":
-        return redirect("inventory:staff_dashboard")
+        return redirect("inventory:admin_dashboard")
     else:
         return redirect("inventory:staff_dashboard") 
 

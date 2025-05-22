@@ -9,10 +9,13 @@
 <h1 class="section-title">Inventory</h1>
 
 <div class="action-buttons">
-    <button class="add-product-btn" onclick="openModal()">Add Product</button>
-    <button class="update-btn" onclick="populateFormForUpdate()">Update</button>
-    <button class="delete-btn" onclick="deleteSelected()">Delete</button>
+    {% if request.user.role == 'admin' or request.user.role == 'manager' or request.user.role == 'staff' %}
+        <button class="add-product-btn" onclick="openModal()">Add Product</button>
+        <button class="update-btn" onclick="populateFormForUpdate()">Update</button>
+        <button class="delete-btn" onclick="deleteSelected()">Delete</button>
+    {% endif %}
 </div>
+
 
 <!-- Search Bar -->
 <input type="text" class="search-input" placeholder="Search products..." />

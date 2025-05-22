@@ -17,7 +17,7 @@ def manager_dashboard(request):
 
 @login_required
 def staff_dashboard(request):
-    return render(request, "inventory/staff/staff_dashboard.html")
+    return render(request, "inventory/admin/admin_dashboard.html")
 
 
 @login_required

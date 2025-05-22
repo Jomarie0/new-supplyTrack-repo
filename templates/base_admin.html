@@ -15,6 +15,8 @@
     <aside id="sidebar" class="sidebar">
         <nav class="sidebar-nav">
             <ul class="menu">
+            {% if request.user.role == 'admin' or request.user.role == 'manager' %}
+
                 <li><a href="{% url 'inventory:admin_dashboard' %}" class="menu-item">Dashboard</a></li>
                 <li><a href="{% url 'inventory:inventory_list' %}" class="menu-item">Inventory</a></li>
     
@@ -40,7 +42,17 @@
                 <li><a href="{% url 'users:user_management' %}" class="menu-item">Users</a></li>
                 <li><a href="{% url 'delivery:delivery_list' %}" class="menu-item">Delivery</a></li>
 
+            {% elif request.user.role == 'staff' %}
+                <li>
+                    <li><a href="{% url 'inventory:admin_dashboard' %}" class="menu-item">Dashboard</a></li>
+                <li><a href="{% url 'inventory:inventory_list' %}" class="menu-item">Inventory</a></li>
+                    <a href="{% url 'orders:order_list' %}" class="submenu-item {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}">
+                        Customer Orders
+                    </a>
+                </li>
+            {% endif %}
                 <li><a href="{% url 'users:logout_view' %}" class="menu-item">Logout</a></li>
+
             </ul>
         </nav>
     </aside>
