@@ -2,3 +2,12 @@ Django
 djangorestframework
 djangorestframework-simplejwt
 python-dotenv
+python-decouple
+pandas
+matplotlib
+statsmodels
+numpy
+scipy
+joblib
+threadpoolctl
+scikit-learn

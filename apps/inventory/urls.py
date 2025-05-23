@@ -1,5 +1,13 @@
 from django.urls import path
-from .views import manager_dashboard, staff_dashboard, inventory_list,delete_products, dashboard, archive_list, permanently_delete_products, restore_products
+from .views import (manager_dashboard, 
+                    staff_dashboard, 
+                    inventory_list,
+                    delete_products, 
+                    dashboard, 
+                    archive_list, 
+                    permanently_delete_products, 
+                    restore_products,
+                    )
 app_name = "inventory"
 
 urlpatterns = [
@@ -12,6 +20,8 @@ urlpatterns = [
     path("archive-list/", archive_list, name="archive_list"),
     path("permanently-delete/", permanently_delete_products, name="permanently_delete_products"),
     path("restore-products/", restore_products, name="restore_products"),
+
+    # path('forecast/<str:product_id>/', stock_forecast_view, name='stock_forecast'),
 
 
 

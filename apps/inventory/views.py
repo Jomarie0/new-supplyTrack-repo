@@ -9,6 +9,8 @@ import json
 from django.db.models.functions import TruncMonth
 from django.db.models import Sum, Count
 from django.utils.timezone import now
+# from .utils.forecasting import forecast_stock_demand_from_orders
+
 
 
 # @login_required
@@ -103,6 +105,7 @@ def dashboard(request):
     # STOCK DATA
     products = list(Product.objects.values_list('name', flat=True))
     stock_quantities = list(Product.objects.values_list('stock_quantity', flat=True))
+    product_names = Product.objects.values_list('name', flat=True).distinct()
 
     # SALES DATA
     sales_by_month = (
@@ -134,5 +137,14 @@ def dashboard(request):
         'sales_totals_json': json.dumps(sales_totals),
         'status_labels_json': json.dumps(status_labels),
         'status_counts_json': json.dumps(status_counts),
+        'product_names': product_names
     }
     return render(request, 'inventory/admin/admin_dashboard.html', context)
+# forecasting area dine
+# def stock_forecast_view(request, product_id):
+#     graph, error = forecast_stock_demand_from_orders(product_id)
+#     return render(request, 'inventory/reports/forecast.html', {
+#         'graph': graph,
+#         'error': error,
+#         'product_id': product_id,
+#     })
