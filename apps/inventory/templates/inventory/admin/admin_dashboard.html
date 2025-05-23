@@ -1,10 +1,134 @@
 {% extends "base_admin.html" %}
+{% load static %}
 
-{% block title %}Dashboard{% endblock %}
+<title>
+{% block title %}
+    {% if request.user.role == 'admin' %}
+        Admin | Panel
+    {% elif request.user.role == 'manager' %}
+        Manager | Panel
+    {% elif request.user.role == 'staff' %}
+        Staff | Panel
+    {% else %}
+        Delivery | Panel
+    {% endif %}
+{% endblock %}
+</title>
+{% block styles %}
+    <link rel="stylesheet" href="{% static 'css/dashboard/dashboard.css' %}">
+{% endblock %}
 
 {% block content %}
-    <h2>Welcome to the Admin Dashboard</h2>
+<div class="dashboard-container">
+    
+    <h1>
+        {% if request.user.role == 'admin' %}
+            Admin | Dashboard
+        {% elif request.user.role == 'manager' %}
+            Manager | Dashboard
+        {% elif request.user.role == 'staff' %}
+            Staff | Dashboard
+        {% else %}
+            Delivery | Dashboard
+        {% endif %}
+    </h1>
 
-    <a href="{% url 'users:logout_view' %}">Logout</a>
+    <div class="top-graphs">
+        <div class="graph-sales-box">
+            <h3>Sales Overview</h3>
+            <canvas id="salesChart"></canvas>
+        </div>
+        <div class="graph-box">
+            <h3>Orders Status</h3>
+            <canvas id="ordersChart"></canvas>
+        </div>
+    </div>
+
+    <div class="bottom-graph">
+        <h3>Stock Levels</h3>
+        <canvas id="stockChart"></canvas>
+    </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Parse JSON data from context
+    const products = JSON.parse('{{ products_json|escapejs }}');
+    const stockQuantities = JSON.parse('{{ stock_quantities_json|escapejs }}');
+
+    const months = JSON.parse('{{ months_json|escapejs }}');
+    const salesTotals = JSON.parse('{{ sales_totals_json|escapejs }}');
+
+    const orderStatusLabels = JSON.parse('{{ status_labels_json|escapejs }}');
+    const orderStatusData = JSON.parse('{{ status_counts_json|escapejs }}');
+
+    // Sales Overview Chart (Line chart)
+    new Chart(document.getElementById('salesChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: [{
+                label: 'Total Sales',
+                data: salesTotals,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // Order Status Doughnut Chart
+    new Chart(document.getElementById('ordersChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: orderStatusLabels,
+            datasets: [{
+                label: 'Order Status',
+                data: orderStatusData,
+                backgroundColor: ['#e74c3c', '#2ecc71', '#f1c40f']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    // Stock Levels Bar Chart
+    new Chart(document.getElementById('stockChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: products,
+            datasets: [{
+                label: 'Stock Quantity',
+                data: stockQuantities,
+                backgroundColor: 'rgba(54, 162, 235, 0.7)'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>
+
 
 {% endblock %}

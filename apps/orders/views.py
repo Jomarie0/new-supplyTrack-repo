@@ -30,14 +30,21 @@ def order_list(request):
             form = OrderForm(request.POST)
 
         if form.is_valid():
-            form.save()
+            order = form.save(commit=False)
+            if not order.order_id:
+                order.order_id = generate_unique_order_id()
+            order.save()
             return redirect('orders:order_list')
 
-    orders = Order.objects.all()
+
+
+    orders = Order.objects.filter(is_deleted=False)
+
     context = {
         'orders': orders,
         'form': form,
-        'products': Product.objects.all()
+        'products': Product.objects.filter(is_deleted=False)
+
     }
     return render(request, 'orders/orders_list.html', context)
 

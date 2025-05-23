@@ -2,7 +2,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>{% block title %}Admin | Panel{% endblock %}</title>
+    <title>
+    {% block title %}
+        {% if request.user.role == 'admin' %}
+            Admin | Panel
+        {% elif request.user.role == 'manager' %}
+            Manager | Panel
+        {% elif request.user.role == 'staff' %}
+            Staff | Panel
+        {% else %}
+            Delivery | Panel
+        {% endif %}
+    {% endblock %}
+    </title>
+
     <link rel="stylesheet" href="{% static 'css/base/base_admin/base_admin.css' %}">
     {% block styles %}{% endblock %}
 </head>
@@ -15,9 +28,9 @@
     <aside id="sidebar" class="sidebar">
         <nav class="sidebar-nav">
             <ul class="menu">
-            {% if request.user.role == 'admin' or request.user.role == 'manager' %}
+            {% if request.user.role == 'admin' %}
 
-                <li><a href="{% url 'inventory:admin_dashboard' %}" class="menu-item">Dashboard</a></li>
+                <li><a href="{% url 'inventory:dashboard' %}" class="menu-item">Dashboard</a></li>
                 <li><a href="{% url 'inventory:inventory_list' %}" class="menu-item">Inventory</a></li>
     
                 <!-- Dropdown Menu for Orders -->
@@ -42,9 +55,31 @@
                 <li><a href="{% url 'users:user_management' %}" class="menu-item">Users</a></li>
                 <li><a href="{% url 'delivery:delivery_list' %}" class="menu-item">Delivery</a></li>
 
+            {% elif request.user.role == 'manager' %}
+            <li><a href="{% url 'inventory:dashboard' %}" class="menu-item">Dashboard</a></li>
+                <li><a href="{% url 'inventory:inventory_list' %}" class="menu-item">Inventory</a></li>
+    
+                <!-- Dropdown Menu for Orders -->
+                <li class="dropdown">
+                    <button class="dropdown-toggle" onclick="toggleDropdown()">
+                        Order ▼
+                    </button>
+                    <ul id="orderDropdown" class="dropdown-menu {% if request.resolver_match.url_name == 'order_list' or request.resolver_match.url_name == 'purchase_order_list' %}open{% else %}hidden{% endif %}">
+                        <li>
+                            <a href="{% url 'orders:order_list' %}" class="submenu-item {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}">
+                                Customer Orders
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'PO:purchase_order_list' %}" class="submenu-item {% if request.resolver_match.url_name == 'purchase_order_list' %}active{% endif %}">
+                                Purchase Orders
+                            </a>
+                        </li>
+                    </ul>
+                </li>
             {% elif request.user.role == 'staff' %}
                 <li>
-                    <li><a href="{% url 'inventory:admin_dashboard' %}" class="menu-item">Dashboard</a></li>
+                    <li><a href="{% url 'inventory:dashboard' %}" class="menu-item">Dashboard</a></li>
                 <li><a href="{% url 'inventory:inventory_list' %}" class="menu-item">Inventory</a></li>
                     <a href="{% url 'orders:order_list' %}" class="submenu-item {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}">
                         Customer Orders

@@ -38,7 +38,8 @@ def purchase_order_list(request):
                 form.save()
                 return redirect('PO:purchase_order_list')
 
-    purchase_orders = PurchaseOrder.objects.all()
+    purchase_orders = PurchaseOrder.objects.filter(is_deleted=False)
+
     context = {
         'purchase_orders': purchase_orders,
         'form': form,

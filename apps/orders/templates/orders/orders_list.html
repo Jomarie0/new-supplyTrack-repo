@@ -11,17 +11,14 @@
 <div class="orders-layout">
   <div class="orders-panel">
 
-    <!-- Action Buttons -->
     <div class="action-buttons">
       <button class="add-order-btn" onclick="openModal()">Add Order</button>
       <button class="update-btn" onclick="populateFormForUpdate()">Update</button>
       <button class="delete-btn" onclick="deleteSelected()">Delete</button>
     </div>
 
-    <!-- Search Bar -->
     <input type="text" class="search-input" placeholder="Search orders..." />
 
-    <!-- Orders Table -->
     <div class="table-wrapper">
       <table class="orders-table">
         <thead>
@@ -30,9 +27,12 @@
             <th>Order ID</th>
             <th>Product</th>
             <th>Quantity</th>
+            <th>Unit Price</th>
+            <th>Total Price</th>
             <th>Order Date</th>
             <th>Expected Delivery</th>
             <th>Status</th>
+            <th>Customer</th>
           </tr>
         </thead>
         <tbody>
@@ -42,27 +42,29 @@
             <td>{{ order.order_id }}</td>
             <td>{{ order.product.name }}</td>
             <td>{{ order.quantity }}</td>
-            <td>{{ order.order_date|date:"Y-m-d H:i" }}</td>
-            <td>{{ order.expected_delivery|default:"—" }}</td>
+            <td>{{ order.unit_price }}</td>
+            <td>{{ order.total_price }}</td>
+            <td>{{ order.order_date|date:"Y-m-d\TH:i" }}</td>  {# ISO 8601 for datetime-local #}
+            <td>{{ order.expected_delivery|default:"" }}</td>
             <td>{{ order.status }}</td>
+            <td>{{ order.customer.username|default:"—" }}</td>
           </tr>
           {% empty %}
-          <tr><td colspan="7">No orders found.</td></tr>
+          <tr><td colspan="10">No orders found.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
 
-    <!-- Modal Overlay -->
+    <!-- Modal -->
     <div id="formModal" class="modal hidden">
       <div class="modal-content">
         <span class="close-btn" onclick="closeModal()">&times;</span>
         <h2>Add / Update Order</h2>
         <form method="POST" id="order-form">
           {% csrf_token %}
-          <input type="hidden" name="order_id" id="hidden-order-id">
+          <input type="hidden" name="order_id" id="hidden-order-id" value="">
 
-          <!-- Form Errors -->
           {% if form.errors %}
             <div class="error-messages">
               <ul>
@@ -87,69 +89,82 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Open modal
   window.openModal = function() {
     document.getElementById('formModal').classList.remove('hidden');
   };
 
-  // Close modal and reset
   window.closeModal = function() {
     document.getElementById('formModal').classList.add('hidden');
-    document.getElementById('hidden-order-id').value = '';
+    document.getElementById('hidden-order-id').value = order.order_id;
     document.querySelector('.submit-btn').textContent = 'Save';
+    document.getElementById('order-form').reset();
   };
 
-  // Populate form for update
   window.populateFormForUpdate = function() {
     const sel = document.querySelectorAll('.order-checkbox:checked');
-    if (sel.length !== 1) {
-      return alert('Please select exactly one order to update.');
-    }
+    if (sel.length !== 1) return alert('Please select exactly one order to update.');
+
     const row = sel[0].closest('tr');
     const cells = row.children;
+
+    const expectedDeliveryText = cells[7].textContent.trim();
+    const expected_delivery = expectedDeliveryText === '' ? '' : expectedDeliveryText;
+
+    // Parse order_date to ISO format for datetime-local input
+    let orderDateRaw = cells[6].textContent.trim();
+    let order_date = '';
+    if(orderDateRaw){
+      // If orderDateRaw is "YYYY-MM-DD HH:MM", convert to "YYYY-MM-DDTHH:MM"
+      order_date = orderDateRaw.replace(' ', 'T');
+    }
+
     const order = {
       order_id: cells[1].textContent.trim(),
       product: cells[2].textContent.trim(),
       quantity: cells[3].textContent.trim(),
-      expected_delivery: cells[5].textContent.trim(),
-      status: cells[6].textContent.trim()
+      unit_price: cells[4].textContent.trim(),
+      expected_delivery: expected_delivery,
+      status: cells[8].textContent.trim(),
+      order_date: order_date
     };
-    // Fill hidden ID
+
     document.getElementById('hidden-order-id').value = order.order_id;
-    // Set form fields (Django’s default IDs: id_product, id_quantity, id_expected_delivery, id_status)
-    document.getElementById('id_product').value = getProductId(order.product);
+
+    // Set product select option based on visible name
+    const productSelect = document.getElementById('id_product');
+    for(let opt of productSelect.options){
+      if(opt.text.trim() === order.product){
+        productSelect.value = opt.value;
+        break;
+      }
+    }
+
     document.getElementById('id_quantity').value = order.quantity;
+    document.getElementById('id_unit_price').value = order.unit_price;
     document.getElementById('id_expected_delivery').value = order.expected_delivery;
     document.getElementById('id_status').value = order.status;
+
+    if(document.getElementById('id_order_date')){
+      document.getElementById('id_order_date').value = order.order_date;
+    }
+
     document.querySelector('.submit-btn').textContent = 'Update Order';
     openModal();
   };
 
-  // Find product ID by name
-  window.getProductId = function(name) {
-    const opts = document.getElementById('id_product').options;
-    for (let opt of opts) {
-      if (opt.text.trim() === name) return opt.value;
-    }
-    return '';
-  };
-
-  // Search filter
   document.querySelector('.search-input').addEventListener('input', function(e) {
     const kw = e.target.value.toLowerCase();
     document.querySelectorAll('.orders-table tbody tr').forEach(row => {
-      const text = Array.from(row.children)
-        .slice(1,4)
+      const text = Array.from(row.children).slice(1, 4)
         .map(td => td.textContent.toLowerCase())
         .join(' ');
       row.style.display = text.includes(kw) ? '' : 'none';
     });
   });
 
-  // Delete selected orders
   window.deleteSelected = function() {
     const ids = Array.from(document.querySelectorAll('.order-checkbox:checked'))
-                    .map(cb => cb.dataset.id);
+      .map(cb => cb.dataset.id);
     if (!ids.length) return alert('Please select at least one order.');
     if (!confirm('Delete selected orders?')) return;
     fetch("{% url 'orders:delete_orders' %}", {
@@ -168,9 +183,8 @@ document.addEventListener('DOMContentLoaded', function() {
     .catch(e => alert('Error: ' + e));
   };
 
-  // Select-all checkbox
   document.getElementById('select-all').addEventListener('change', function() {
-    document.querySelectorAll('.order-checkbox') 
+    document.querySelectorAll('.order-checkbox')
       .forEach(cb => cb.checked = this.checked);
   });
 });

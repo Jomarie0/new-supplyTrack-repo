@@ -3,13 +3,19 @@ from django.contrib.auth.decorators import login_required
 from .models import Product
 from .forms import ProductForm, StockMovementForm
 from django.http import JsonResponse
+from apps.orders.models import Order  # adjust if needed
 from django.views.decorators.csrf import csrf_exempt
 import json
+from django.db.models.functions import TruncMonth
+from django.db.models import Sum, Count
+from django.shortcuts import render
 
 
-@login_required
-def admin_dashboard(request):
-    return render(request, "inventory/admin/admin_dashboard.html")
+
+
+# @login_required
+# def admin_dashboard(request):
+#     return render(request, "inventory/admin/admin_dashboard.html")
 
 @login_required
 def manager_dashboard(request):
@@ -22,7 +28,8 @@ def staff_dashboard(request):
 
 @login_required
 def inventory_list(request):
-    products = Product.objects.all()
+    products = Product.objects.filter(is_deleted=False)
+
     movement_form = StockMovementForm()
 
     if request.method == 'POST':
@@ -59,3 +66,49 @@ def delete_products(request):
             return JsonResponse({'status': 'success'})
         return JsonResponse({'status': 'no ids provided'}, status=400)
     return JsonResponse({'status': 'invalid method'}, status=405)
+
+
+import json
+from django.shortcuts import render
+from django.db.models import Sum, Count
+from django.db.models.functions import TruncMonth
+from .models import Product
+from apps.orders.models import Order
+
+def dashboard(request):
+    # STOCK DATA
+    products = list(Product.objects.values_list('name', flat=True))
+    stock_quantities = list(Product.objects.values_list('stock_quantity', flat=True))
+
+    # SALES DATA
+    sales_by_month = (
+        Order.objects
+        .filter(is_deleted=False, status="Completed")
+        .annotate(month=TruncMonth('order_date'))
+        .values('month')
+        .annotate(total_sales=Sum('total_price'))
+        .order_by('month')
+    )
+
+    months = [entry['month'].strftime('%b') for entry in sales_by_month]
+    sales_totals = [float(entry['total_sales']) for entry in sales_by_month]
+
+    # ORDER STATUS DATA
+    order_status_counts = (
+        Order.objects
+        .filter(is_deleted=False)
+        .values('status')
+        .annotate(count=Count('id'))
+    )
+    status_labels = [entry['status'] for entry in order_status_counts]
+    status_counts = [entry['count'] for entry in order_status_counts]
+
+    context = {
+        'products_json': json.dumps(products),
+        'stock_quantities_json': json.dumps(stock_quantities),
+        'months_json': json.dumps(months),
+        'sales_totals_json': json.dumps(sales_totals),
+        'status_labels_json': json.dumps(status_labels),
+        'status_counts_json': json.dumps(status_counts),
+    }
+    return render(request, 'inventory/admin/admin_dashboard.html', context)

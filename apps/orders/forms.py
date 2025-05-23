@@ -13,7 +13,7 @@ class OrderForm(forms.ModelForm):
 
     class Meta:
         model = Order
-        fields = ['product', 'quantity', 'expected_delivery', 'status']  # ⛔ No 'order_id'
+        fields = ['product', 'quantity', 'unit_price', 'expected_delivery', 'status']
 
     def clean(self):
         cleaned_data = super().clean()

@@ -165,13 +165,13 @@ def resend_verification_code_view(request):
 
 def redirect_based_on_role(user):
     if user.role == "admin":
-        return redirect("inventory:admin_dashboard")
+        return redirect("inventory:dashboard")
     elif user.role == "manager":
-        return redirect("inventory:manager_dashboard")
+        return redirect("inventory:dashboard")
     elif user.role == "staff":
-        return redirect("inventory:admin_dashboard")
+        return redirect("inventory:dashboard")
     else:
-        return redirect("inventory:staff_dashboard") 
+        return redirect("inventory:dashboard") 
 
 def login_view(request):
     if request.user.is_authenticated:
@@ -222,36 +222,52 @@ def dashboard_view(request):
 
 @login_required
 def user_management(request):
-    # Only admin can access this view
     if request.user.role != 'admin':
-        return HttpResponseForbidden("You do not have permission to view this page.")  # Return 403 for unauthorized access
+        return HttpResponseForbidden("You do not have permission to view this page.")
 
     users = User.objects.all()
 
     if request.method == 'POST':
         user_id = request.POST.get('user_id')
-        new_role = request.POST.get('new_role')
+        role = request.POST.get('role')
+        username = request.POST.get('username')
+        email = request.POST.get('email')
 
-        # Ensure the new role is valid
-        valid_roles = ['admin', 'manager', 'staff', 'delivery_confirmation']
-        if new_role not in valid_roles:
+        valid_roles = ['admin', 'manager', 'staff', 'delivery']
+
+        if role not in valid_roles:
             messages.error(request, "Invalid role selected.")
             return redirect('users:user_management')
 
-        try:
-            user = User.objects.get(id=user_id)
-            user.role = new_role
+        if user_id:  # Update existing user
+            try:
+                user = User.objects.get(id=user_id)
+                user.username = username
+                user.email = email
+                user.role = role
+                user.save()
+                messages.success(request, f"User '{username}' updated successfully.")
+                return redirect('users:user_management')
+            except User.DoesNotExist:
+                messages.error(request, "User not found.")
+                return redirect('users:user_management')
+
+        else:  # Add new user
+            if User.objects.filter(username=username).exists():
+                messages.error(request, "Username already exists.")
+                return redirect('users:user_management')
+            user = User.objects.create_user(username=username, email=email, role=role)
+            # Optionally set a default password or require password input
+            user.set_password('defaultpassword123')  # Change or generate password securely
             user.save()
-            messages.success(request, f"User role updated to {new_role}.")
-            return redirect('users:user_management')  # reload the page after update
-        except User.DoesNotExist:
-            messages.error(request, "User not found.")
-            return redirect('users:user_management')  # redirect with error message
+            messages.success(request, f"User '{username}' added successfully.")
+            return redirect('users:user_management')
 
     context = {
         'users': users,
     }
     return render(request, 'users/user_management.html', context)
+
 
 @csrf_exempt 
 @login_required
