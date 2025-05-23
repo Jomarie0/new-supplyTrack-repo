@@ -8,9 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from django.db.models.functions import TruncMonth
 from django.db.models import Sum, Count
-from django.shortcuts import render
-
-
+from django.utils.timezone import now
 
 
 # @login_required
@@ -55,25 +53,51 @@ def inventory_list(request):
     }
     return render(request, 'inventory/inventory_list/inventory_list.html', context)
 
+@login_required
+def archive_list(request):
+    archived_products = Product.objects.filter(is_deleted=True)
+    return render(request, 'inventory/inventory_list/archive_list.html', {'products': archived_products})
+
 @csrf_exempt
 def delete_products(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         ids = data.get('ids', [])
-        
+
         if ids:
-            Product.objects.filter(id__in=ids).delete()
+            for product in Product.objects.filter(id__in=ids):
+                product.delete()  # Triggers the custom delete (soft delete)
+            return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'no ids provided'}, status=400)
+    return JsonResponse({'status': 'invalid method'}, status=405)
+
+@csrf_exempt
+def permanently_delete_products(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        ids = data.get('ids', [])
+
+        if ids:
+            Product.objects.filter(id__in=ids, is_deleted=True).delete()
+            return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'no ids provided'}, status=400)
+    return JsonResponse({'status': 'invalid method'}, status=405)
+
+@csrf_exempt
+def restore_products(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        ids = data.get('ids', [])
+
+        if ids:
+            for product in Product.objects.filter(id__in=ids, is_deleted=True):
+                product.restore()
             return JsonResponse({'status': 'success'})
         return JsonResponse({'status': 'no ids provided'}, status=400)
     return JsonResponse({'status': 'invalid method'}, status=405)
 
 
-import json
-from django.shortcuts import render
-from django.db.models import Sum, Count
-from django.db.models.functions import TruncMonth
-from .models import Product
-from apps.orders.models import Order
+# ---------------------- D A S H  B O A R D ------------------------- #
 
 def dashboard(request):
     # STOCK DATA

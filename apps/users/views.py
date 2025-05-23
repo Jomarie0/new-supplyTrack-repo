@@ -22,15 +22,19 @@ from django.shortcuts import get_object_or_404
 import datetime
 from django.utils.timezone import now
 from datetime import timedelta
+from django.core.exceptions import ValidationError
+from django.contrib.auth.hashers import make_password
+from django.urls import reverse
+from django.contrib.auth import get_user_model
 
 def generate_verification_code():
     return str(random.randint(100000, 999999))
 
 def send_verification_email(email, code):
     send_mail(
-        subject='Verify your email',
+        subject="Your Verification Code",
         message=f'Your verification code is: {code}',
-        from_email='no-reply@supplytrack.com',
+        from_email='SupplyTrack <danegela13@gmail.com>',
         recipient_list=[email],
     )
 
@@ -96,72 +100,84 @@ class CustomRefreshTokenView(TokenRefreshView):
             return res
         except:
             return Response({'refreshed': False}, status=400)
-        
-        
+
 def register_view(request):
-    success = False
     if request.method == "POST":
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            user = form.save(commit=False)
-            user.is_active = False
-            user.save()
+            # Check if email already used by ACTIVE user
+            if User.objects.filter(email=form.cleaned_data['email'], is_active=True).exists():
+                form.add_error('email', 'An active account with this email already exists.')
+            else:
+                # Store form data in session temporarily
+                request.session['temp_user_data'] = {
+                    'username': form.cleaned_data['username'],
+                    'email': form.cleaned_data['email'],
+                    'password': form.cleaned_data['password1'],
+                }
 
-            code = generate_verification_code()
-            EmailVerification.objects.create(user=user, code=code)
-            send_verification_email(user.email, code)
-
-            # Store user ID in session to verify later
-            request.session['verify_user_id'] = user.id
-            return redirect('users:verify_email')
+                # Generate and store verification code
+                code = generate_verification_code()
+                request.session['verification_code'] = code
+                request.session.set_expiry(180)  # expires in 3 mins
+                send_verification_email(form.cleaned_data['email'], code)
+                return redirect('users:verify_email')
     else:
         form = CustomUserCreationForm()
-    return render(request, "users/register.html", {"form": form, "success": success})
-
+    
+    return render(request, "users/register.html", {"form": form})
 
 def verify_email_view(request):
-    user_id = request.session.get('verify_user_id')
-    user = get_object_or_404(User, id=user_id)
-    record = EmailVerification.objects.filter(user=user).first()
+    code = request.session.get('verification_code')
+    temp_user_data = request.session.get('temp_user_data')
+
+    if not temp_user_data:
+        messages.error(request, "Session expired or invalid. Please register again.")
+        return redirect('users:register')
 
     if request.method == 'POST':
         input_code = request.POST.get('code')
-        if record and not record.is_expired() and record.code == input_code:
+
+        if input_code == code:
+            # Create and activate user
+            user = User.objects.create_user(
+                username=temp_user_data['username'],
+                email=temp_user_data['email'],
+                password=temp_user_data['password']
+            )
             user.is_active = True
             user.save()
-            record.delete()
+
+            # Clear session data
+            del request.session['temp_user_data']
+            del request.session['verification_code']
+
             messages.success(request, "Email verified successfully!")
             return redirect('users:login')
         else:
             messages.error(request, "Invalid or expired code.")
 
-    # Pass expiration time to template
-    if record:
-        expiration_time = record.created_at + datetime.timedelta(minutes=3)
-    else:
-        expiration_time = now()  # fallback
-
+    expiration_time = now() + timedelta(minutes=3)
     return render(request, 'users/verify_email.html', {
-        'expiration_timestamp': int(expiration_time.timestamp() * 1000)  # JS needs ms
+        'expiration_timestamp': int(expiration_time.timestamp() * 1000)
     })
 
+
 def resend_verification_code_view(request):
-    user_id = request.session.get('verify_user_id')
-    user = get_object_or_404(User, id=user_id)
+    temp_user_data = request.session.get('temp_user_data')
 
-    # Generate a new code
+    if not temp_user_data:
+        messages.error(request, "No registration in progress.")
+        return redirect('users:register')
+
     code = generate_verification_code()
+    request.session['verification_code'] = code
+    request.session.set_expiry(180)
 
-    # Delete old record if exists
-    EmailVerification.objects.filter(user=user).delete()
-
-    # Create new record
-    EmailVerification.objects.create(user=user, code=code)
-
-    # Send email
-    send_verification_email(user.email, code)
+    send_verification_email(temp_user_data['email'], code)
     messages.success(request, "A new verification code has been sent.")
     return redirect('users:verify_email')
+
 
 def redirect_based_on_role(user):
     if user.role == "admin":
@@ -191,7 +207,85 @@ def login_view(request):
     
     return render(request, "users/login.html", {"form": form})
 
+# Generate reset code and send to user's email
+def forgot_password_view(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        try:
+            user = User.objects.get(email=email)
+            code = generate_verification_code()
+            request.session['reset_code'] = code
+            request.session['reset_email'] = email
+            request.session.set_expiry(180)  # expires in 3 mins
+            send_verification_email(email, code)
+            return redirect('users:verify_reset_code')
+        except User.DoesNotExist:
+            messages.error(request, 'No account with this email was found.')
+    
+    return render(request, 'users/forgot_password.html')
 
+# Code verification for reset
+def verify_reset_code_view(request):
+    code = request.session.get('reset_code')
+    if not code:
+        messages.error(request, "Session expired or invalid. Please try again.")
+        return redirect('users:forgot_password')
+
+    if request.method == 'POST':
+        input_code = request.POST.get('code')
+        if input_code == code:
+            request.session['code_verified'] = True
+            return redirect('users:reset_password')
+        else:
+            messages.error(request, 'Invalid or expired code.')
+
+    expiration_time = now() + timedelta(minutes=3)
+    return render(request, 'users/verify_reset_code.html', {
+        'expiration_timestamp': int(expiration_time.timestamp() * 1000)
+    })
+
+# Resend reset code
+def resend_reset_code_view(request):
+    email = request.session.get('reset_email')
+    if not email:
+        messages.error(request, "No reset request found.")
+        return redirect('users:forgot_password')
+
+    code = generate_verification_code()
+    request.session['reset_code'] = code
+    request.session.set_expiry(180)
+    send_verification_email(email, code)
+    messages.success(request, "A new reset code has been sent.")
+    return redirect('users:verify_reset_code')
+
+# Final password reset
+def reset_password_view(request):
+    if not request.session.get('code_verified'):
+        messages.error(request, "You must verify the code first.")
+        return redirect('users:forgot_password')
+
+    if request.method == 'POST':
+        password = request.POST.get('new_password')
+        confirm = request.POST.get('confirm_password')
+
+        if password != confirm:
+            messages.error(request, "Passwords do not match.")
+        else:
+            email = request.session.get('reset_email')
+            try:
+                user = User.objects.get(email=email)
+                user.set_password(password)
+                user.save()
+                # Clear reset session
+                for key in ['reset_code', 'reset_email', 'code_verified']:
+                    if key in request.session:
+                        del request.session[key]
+                messages.success(request, "Password reset successful!")
+                return redirect('users:login')
+            except User.DoesNotExist:
+                messages.error(request, "Error resetting password. Please try again.")
+
+    return render(request, 'users/reset_password.html')
 
 @api_view(['POST'])
 def logout(request):

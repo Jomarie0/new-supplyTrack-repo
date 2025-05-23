@@ -13,6 +13,7 @@
         <button class="add-product-btn" onclick="openModal()">Add Product</button>
         <button class="update-btn" onclick="populateFormForUpdate()">Update</button>
         <button class="delete-btn" onclick="deleteSelected()">Delete</button>
+        <a href="{% url 'inventory:archive_list' %}">🗂  View Archived Products</a>
     {% endif %}
 </div>
 

@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,12 +31,21 @@ DEBUG = True
 ALLOWED_HOSTS = []
 LOGIN_URL = '/users/login/'
 
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'           # or your actual mail server
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 'danegela13@gmail.com'
+# EMAIL_HOST_PASSWORD = 'fxrb ptuq vfwo sdts'  # App password, NOT your Gmail password
+# DEFAULT_FROM_EMAIL = 'SupplyTrack <danegela13@gmail.com>'
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'           # or your actual mail server
+EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'danegela13@gmail.com'
-EMAIL_HOST_PASSWORD = 'fxrb ptuq vfwo sdts'  # App password, NOT your Gmail password
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = f"SupplyTrack <{EMAIL_HOST_USER}>"
 
 # Application definition
 

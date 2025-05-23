@@ -7,6 +7,7 @@ from django.http import JsonResponse
 import json
 import random
 import string
+from django.utils.timezone import now
 
 def generate_unique_order_id():
     from .models import Order
@@ -48,6 +49,21 @@ def order_list(request):
     }
     return render(request, 'orders/orders_list.html', context)
 
+def archived_orders(request):
+    archived = Order.objects.filter(is_deleted=True)
+    return render(request, 'orders/archived_orders.html', {'archived_orders': archived})
+
+# @csrf_exempt
+# def delete_orders(request):
+#     if request.method == 'POST':
+#         try:
+#             data = json.loads(request.body)
+#             order_ids_to_delete = data.get('ids', [])
+#             Order.objects.filter(order_id__in=order_ids_to_delete).delete()
+#             return JsonResponse({'success': True})
+#         except Exception as e:
+#             return JsonResponse({'success': False, 'error': str(e)})
+#     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 @csrf_exempt
 def delete_orders(request):
@@ -55,12 +71,37 @@ def delete_orders(request):
         try:
             data = json.loads(request.body)
             order_ids_to_delete = data.get('ids', [])
-            Order.objects.filter(order_id__in=order_ids_to_delete).delete()
+            for order in Order.objects.filter(order_id__in=order_ids_to_delete):
+                order.delete()  # calls soft delete
             return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
+@csrf_exempt
+def permanently_delete_orders(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            order_ids = data.get('ids', [])
+            Order.objects.filter(order_id__in=order_ids, is_deleted=True).delete()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@csrf_exempt
+def restore_orders(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            order_ids = data.get('ids', [])
+            for order in Order.objects.filter(order_id__in=order_ids, is_deleted=True):
+                order.restore()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 
 

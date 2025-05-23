@@ -4,6 +4,7 @@ from .forms import PurchaseOrderForm
 from django.views.decorators.csrf import csrf_exempt
 import json
 from django.http import JsonResponse
+from django.utils.timezone import now
 
 def purchase_order_list(request):
     form = PurchaseOrderForm()
@@ -46,14 +47,50 @@ def purchase_order_list(request):
     }
     return render(request, 'purchase_orders/purchase_order_list.html', context)
 
+def archived_purchase_orders(request):
+    archived_orders = PurchaseOrder.objects.filter(is_deleted=True)
+    return render(request, 'purchase_orders/archived_purchase_orders.html', {'archived_orders': archived_orders})
+
+# @csrf_exempt
+# def delete_purchase_orders(request):
+#     if request.method == 'POST':
+#         try:
+#             data = json.loads(request.body)
+#             po_ids_to_delete = data.get('ids', [])
+#             PurchaseOrder.objects.filter(purchase_order_id__in=po_ids_to_delete).delete()
+#             return JsonResponse({'success': True})
+#         except Exception as e:
+#             return JsonResponse({'success': False, 'error': str(e)})
+#     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
 @csrf_exempt
 def delete_purchase_orders(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             po_ids_to_delete = data.get('ids', [])
-            PurchaseOrder.objects.filter(purchase_order_id__in=po_ids_to_delete).delete()
+            orders = PurchaseOrder.objects.filter(purchase_order_id__in=po_ids_to_delete)
+            for order in orders:
+                order.delete()  # This uses your soft-delete logic
             return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@csrf_exempt
+def restore_purchase_orders(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        ids = data.get('ids', [])
+        PurchaseOrder.objects.filter(purchase_order_id__in=ids).update(is_deleted=False, deleted_at=None)
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False})
+
+@csrf_exempt
+def permanently_delete_purchase_orders(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        ids = data.get('ids', [])
+        PurchaseOrder.objects.filter(purchase_order_id__in=ids).delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False})

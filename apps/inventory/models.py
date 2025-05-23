@@ -1,10 +1,6 @@
 from django.db import models
 from apps.suppliers.models import Supplier
 import uuid
-
-from django.db import models
-from apps.suppliers.models import Supplier
-import uuid
 from django.utils import timezone
 
 class Product(models.Model):

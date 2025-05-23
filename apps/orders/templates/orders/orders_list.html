@@ -15,6 +15,8 @@
       <button class="add-order-btn" onclick="openModal()">Add Order</button>
       <button class="update-btn" onclick="populateFormForUpdate()">Update</button>
       <button class="delete-btn" onclick="deleteSelected()">Delete</button>
+      <a href="{% url 'orders:archived_orders' %}" class="btn">🗂 View Archive Orders</a>
+
     </div>
 
     <input type="text" class="search-input" placeholder="Search orders..." />

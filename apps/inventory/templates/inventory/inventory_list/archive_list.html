@@ -1,0 +1,113 @@
+{% extends 'base_admin.html' %}
+{% load static %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/inventory/inventory.css' %}">
+{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Archived Products</h1>
+
+<a href="{% url 'inventory:inventory_list' %}" class="back-button">← Back to Inventory</a>
+<button onclick="restoreSelected()">Restore</button>
+<button onclick="permanentlyDeleteSelected()">Permanently Delete</button>
+
+<table class="inventory-table">
+  <thead>
+    <tr>
+        <th><input type="checkbox" id="select-all"></th>
+        <th>Product ID</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Supplier</th>
+        <th>Price</th>
+        <th>Stock</th>
+        <th>Reorder Level</th>
+        <th>Unit</th>
+        <th>Category</th>
+        <th>Created At</th>
+        <th>Updated At</th>
+        <th>Deleted At</th> <!-- New column -->
+    </tr>
+    </thead>
+    <tbody>
+    {% for product in products %}
+    <tr>
+        <td><input type="checkbox" class="product-checkbox" data-id="{{ product.id }}"></td>
+        <td>{{ product.product_id }}</td>
+        <td>{{ product.name }}</td>
+        <td>{{ product.description }}</td>
+        <td>{{ product.supplier.name }}</td>
+        <td>{{ product.price }}</td>
+        <td>{{ product.stock_quantity }}</td>
+        <td>{{ product.reorder_level }}</td>
+        <td>{{ product.unit }}</td>
+        <td>{{ product.category }}</td>
+        <td>{{ product.created_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ product.updated_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ product.deleted_at|date:"Y-m-d H:i" }}</td> <!-- New data -->
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="13">No products available.</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+
+</table>
+
+<script>
+// Get selected checkbox IDs
+function getSelectedProductIds() {
+    const checkboxes = document.querySelectorAll('.product-checkbox:checked');
+    return Array.from(checkboxes).map(cb => cb.getAttribute('data-id'));
+}
+
+// Get CSRF token from cookies
+function getCSRFToken() {
+    const name = 'csrftoken';
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        let cookie = cookies[i].trim();
+        if (cookie.startsWith(name + '=')) {
+            return decodeURIComponent(cookie.substring(name.length + 1));
+        }
+    }
+    return null;
+}
+
+function restoreSelected() {
+    const ids = getSelectedProductIds();
+    if (!ids.length) {
+        alert("Please select at least one product to restore.");
+        return;
+    }
+    fetch("{% url 'inventory:restore_products' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ids })
+    }).then(() => location.reload());
+}
+
+function permanentlyDeleteSelected() {
+    const ids = getSelectedProductIds();
+    if (!ids.length) {
+        alert("Please select at least one product to delete.");
+        return;
+    }
+    if (!confirm("This will permanently delete the selected products. Continue?")) return;
+    fetch("{% url 'inventory:permanently_delete_products' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ids })
+    }).then(() => location.reload());
+}
+</script>
+
+{% endblock %}

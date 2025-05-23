@@ -16,6 +16,8 @@
       <button class="add-order-btn" onclick="openModal()">Add Purchase Order</button>
       <button class="update-btn" onclick="populateFormForUpdate()">Update</button>
       <button class="delete-btn" onclick="deleteSelected()">Delete</button>
+      <a href="{% url 'PO:archived_purchase_orders' %}" class="back-button">🗂 View Archived Orders</a>
+
     </div>
 
     <!-- Search Bar -->
