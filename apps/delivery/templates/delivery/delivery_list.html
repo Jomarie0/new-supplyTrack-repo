@@ -1,77 +1,18 @@
 {% extends 'base_admin.html' %}
 {% load static %}
 
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/delivery/delivery.css' %}">
+{% endblock %}
+
 {% block content %}
-<style>
-    .modal {
-    display: none; /* Hidden by default */
-    position: fixed; /* Stay in place */
-    z-index: 1; /* Sit on top */
-    left: 0;
-    top: 0;
-    width: 100%; /* Full width */
-    height: 100%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
-    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-}
 
-.modal-content {
-    background-color: #fefefe;
-    margin: 15% auto; /* 15% from the top and centered */
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%; /* Could be more or less, depending on screen size */
-}
-
-.close-button {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-}
-
-.close-button:hover,
-.close-button:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-}
-
-.form-group select,
-.form-group input[type="text"] {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-}
-
-.button {
-    background-color: #4CAF50; /* Green */
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    cursor: pointer;
-    font-size: 16px;
-    margin-bottom: 10px;
-}
-
-.button:hover {
-    opacity: 0.8;
-}
-</style>
     <h1 class="section-title">Delivery Management</h1>
 
     <button id="addDeliveryBtn" class="button">Add Delivery</button>
+    <button onclick="archiveSelected()">Archive Selected</button>
+    <a href="{% url 'delivery:archive_list' %}" class="button">View Archive</a>
+
 
     <div id="addDeliveryModal" class="modal">
         <div class="modal-content">
@@ -106,6 +47,7 @@
         <table class="orders-table">
             <thead>
                 <tr>
+                    <th><input type="checkbox" id="select-all"></th>
                     <th>Order ID</th>
                     <th>Product</th>
                     <th>Quantity</th>
@@ -116,7 +58,8 @@
             </thead>
             <tbody>
                 {% for delivery in deliveries %}
-                    <tr>
+                    <tr data-id="{{ delivery.id }}">
+                        <td><input type="checkbox" class="row-checkbox"></td>
                         <td>{{ delivery.order.order_id }}</td>
                         <td>{{ delivery.order.product.name }}</td>
                         <td>{{ delivery.order.quantity }}</td>
@@ -148,7 +91,7 @@
     <!-- <script src="{% static 'js/delivery_list.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/delivery_list.css' %}"> -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
     const addDeliveryBtn = document.getElementById('addDeliveryBtn');
     const addDeliveryModal = document.getElementById('addDeliveryModal');
     const closeButton = document.querySelector('.close-button');
@@ -166,6 +109,40 @@
             addDeliveryModal.style.display = 'none';
         }
     });
+
+    // Select all checkbox logic
+    const selectAllCheckbox = document.getElementById('select-all');
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+
+    selectAllCheckbox.addEventListener('change', function() {
+        rowCheckboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+    });
 });
+
+function getSelectedIds() {
+  return Array.from(document.querySelectorAll('.row-checkbox:checked'))
+              .map(cb => cb.closest('tr').dataset.id);
+}
+
+function archiveSelected() {
+  const ids = getSelectedIds();
+  if (!ids.length) return alert("No items selected.");
+  if (!confirm("Archive selected deliveries?")) return;
+
+  fetch("{% url 'delivery:archive_deliveries' %}", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ ids })
+  }).then(res => res.json()).then(data => {
+    if (data.success) location.reload();
+    else alert("Error archiving.");
+  });
+}
 </script>
+
 {% endblock %}
