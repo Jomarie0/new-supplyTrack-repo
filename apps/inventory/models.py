@@ -64,3 +64,46 @@ class StockMovement(models.Model):
 
     def __str__(self):
         return f"{self.movement_type} - {self.product.name} ({self.quantity})"
+
+class DemandCheckLog(models.Model):
+    product = models.ForeignKey('Product', on_delete=models.CASCADE)
+    forecasted_quantity = models.IntegerField()
+    current_stock = models.IntegerField()
+    restock_needed = models.BooleanField()
+    checked_at = models.DateTimeField(auto_now_add=True)
+    
+    # Soft delete fields
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    
+    # Optional: Track who deleted it if you have user authentication
+    # deleted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
+
+    def delete(self, using=None, keep_parents=False):
+        """Soft delete: mark as deleted instead of actual deletion"""
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+
+    def restore(self):
+        """Restore a soft-deleted notification"""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
+
+    def hard_delete(self):
+        """Permanently delete the record"""
+        super().delete()
+
+    def __str__(self):
+        return f"{self.product.name} - {self.checked_at.strftime('%Y-%m-%d')}"
+    
+    class Meta:
+        ordering = ['-checked_at']
+    
+class RestockLog(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    forecasted_quantity = models.IntegerField()
+    current_stock = models.IntegerField()
+    checked_at = models.DateTimeField(auto_now_add=True)
+    is_handled = models.BooleanField(default=False)

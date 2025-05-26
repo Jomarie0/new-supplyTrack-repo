@@ -2,17 +2,24 @@ from django.shortcuts import render, redirect
 from .models import Product, Order
 from .forms import OrderForm
 from apps.inventory.models import Product
+from apps.orders.models import Order
+
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import json
 import random
 import string
+from django.utils import timezone
+
 from django.utils.timezone import now
 from django.db.models.functions import TruncMonth
 from django.db.models import Sum
 from sklearn.linear_model import LinearRegression
 import pandas as pd
 import numpy as np
+from datetime import timedelta
+from django.db.models import F, Sum, ExpressionWrapper, FloatField
+from apps.inventory.models import DemandCheckLog
 
 
 def generate_unique_order_id():
@@ -110,67 +117,21 @@ def restore_orders(request):
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 
+# API's dine
 
-@csrf_exempt
-def product_forecast_api(request):
-    # Get product name from query parameters or POST data
-    if request.method == 'GET':
-        product_name = request.GET.get('product')
-    else:  # POST
-        data = json.loads(request.body) if request.body else {}
-        product_name = data.get('product')
-    
-    if not product_name:
-        return JsonResponse({'error': 'Product name is required'}, status=400)
-    
-    try:
-        # Use icontains to find product (case-insensitive partial match)
-        product = Product.objects.get(name__icontains=product_name)
-    except Product.DoesNotExist:
-        return JsonResponse({'error': f'{product_name} product not found'}, status=404)
-    except Product.MultipleObjectsReturned:
-        # If multiple products match, get the first one or be more specific
-        product = Product.objects.filter(name__icontains=product_name).first()
 
-    sales = (
-        Order.objects
-        .filter(product=product, is_deleted=False)
-        .annotate(month=TruncMonth('order_date'))
-        .values('month')
-        .annotate(total_quantity=Sum('quantity'))
-        .order_by('month')
-    )
 
-    if not sales:
-        return JsonResponse({'error': f'No sales data available for {product.name}'}, status=404)
 
-    df = pd.DataFrame(sales)
-    df['month'] = pd.to_datetime(df['month'])
-    df = df.set_index('month').asfreq('MS').fillna(0)
-    df['month_num'] = np.arange(len(df))
 
-    # Forecast using Linear Regression
-    model = LinearRegression()
-    model.fit(df[['month_num']], df['total_quantity'])
+#  restock notif naman dine
 
-    future_months = np.arange(len(df), len(df) + 2).reshape(-1, 1)
-    future_dates = pd.date_range(start=df.index[-1] + pd.offsets.MonthBegin(), periods=2, freq='MS')
-    predictions = model.predict(future_months)
+# def restock_notifications_api(request):
+#     logs = DemandCheckLog.objects.filter(restock_needed=True).order_by('-created_at')[:5]  # limit recent 5 notifications
+#     data = [{
+#         'product_name': log.product.name,
+#         'forecasted_quantity': log.forecasted_quantity,
+#         'current_stock': log.current_stock,
+#         'logged_at': log.created_at.strftime("%Y-%m-%d %H:%M"),
+#     } for log in logs]
 
-    actual = [{"label": date.strftime("%Y-%m"), "value": int(val)} for date, val in df['total_quantity'].items()]
-    forecast = [{"label": date.strftime("%Y-%m"), "value": int(val)} for date, val in zip(future_dates, predictions)]
-
-    return JsonResponse({
-        "actual": actual,
-        "forecast": forecast,
-        "product_name": product.name
-    })
-
-# Optional: Keep the original endpoint for backward compatibility
-@csrf_exempt
-def strepsils_forecast_api(request):
-    # Redirect to the new dynamic endpoint with Strepsils as default
-    request.GET = request.GET.copy()
-    request.GET['product'] = 'Strepsils'
-    return product_forecast_api(request)
-
+#     return JsonResponse(data, safe=False)

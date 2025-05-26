@@ -19,6 +19,30 @@
     <link rel="stylesheet" href="{% static 'css/base/base_admin/base_admin.css' %}">
     {% block styles %}{% endblock %}
 </head>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    fetch('/inventory/api/restock-notifications/')
+      .then(response => response.json())
+      .then(data => {
+        const badge = document.getElementById('notif-badge');
+        if (!badge) return;
+
+        const count = Array.isArray(data) ? data.length : 0;
+
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'inline-flex';  // better alignment
+        } else {
+            badge.style.display = 'none';
+        }
+        })
+
+      .catch(error => {
+        console.error('Error fetching notifications:', error);
+      });
+  });
+</script>
+
 <body>
 
     <!-- Sidebar Toggle Button -->
@@ -51,8 +75,17 @@
                         </li>
                     </ul>
                 </li>
-    
                 <li><a href="{% url 'users:user_management' %}" class="menu-item">Users</a></li>
+                <li>
+                <a href="{% url 'inventory:restock_notifications_view' %}" class="menu-item relative inline-flex items-center">
+                    Notifications
+                    <span id="notif-badge"
+                        class="ml-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full"
+                        style="display: none;">
+                    0
+                    </span>
+                </a>
+                </li>
                 <li><a href="{% url 'delivery:delivery_list' %}" class="menu-item">Delivery</a></li>
 
             {% elif request.user.role == 'manager' %}
