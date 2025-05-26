@@ -377,3 +377,4 @@ def auto_dismiss_resolved_notifications():
             dismissed_count += 1
     
     return dismissed_count
+

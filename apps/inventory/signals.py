@@ -6,6 +6,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.utils import timezone
 from datetime import timedelta
+from .views import product_forecast_api
 
 @receiver(post_save, sender=DemandCheckLog)
 def send_restock_notification(sender, instance, created, **kwargs):
@@ -53,6 +54,7 @@ def update_restock_logs_on_stock_change(sender, instance, created, **kwargs):
                 # Soft delete (mark resolved)
                 log.is_deleted = True
                 log.save(update_fields=['is_deleted'])
+                product_forecast_api()
 
                 # Send resolution notification
                 channel_layer = get_channel_layer()
