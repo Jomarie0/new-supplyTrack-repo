@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" href="modals.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Modals & Toasts Design</title>
+  <style>
+    /* Overlay + modal center */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 9999;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* For the open modal container */
+    .modal {
+      max-width: 400px;
+      width: 90%;
+    }
+
+    /* Buttons to open modals and toasts */
+    .open-buttons {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+      justify-content: center;
+    }
+
+    .open-buttons button {
+      padding: 0.6rem 1.2rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      background-color: #1976d2;
+      color: white;
+      transition: background-color 0.2s ease;
+    }
+
+    .open-buttons button:hover {
+      background-color: #115293;
+    }
+
+    /* Toast container */
+    .toast-container {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      z-index: 10000;
+    }
+
+    /* Toast styles */
+    .toast {
+      display: flex;
+      align-items: center;
+      min-width: 250px;
+      max-width: 350px;
+      padding: 0.8rem 1rem;
+      border-radius: 5px;
+      color: #1b1b1b;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+      font-weight: 600;
+      font-family: "Segoe UI", sans-serif;
+      transform: translateX(100%);
+      opacity: 0;
+      transition: transform 0.4s ease, opacity 0.4s ease;
+      position: relative;
+    }
+
+    .toast.show {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    .toast-success {
+      background-color: #e8f9e4;
+      border-left: 8px solid #4caf50;
+
+    }
+
+    .toast-error {
+      background-color: #ffe8e6;
+      border-left: 8px solid #f44336;
+
+    }
+
+    .toast-icon {
+      margin-right: 0.75rem;
+      font-size: 1.25rem;
+      user-select: none;
+    }
+
+    .toast-message {
+      flex: 1;
+    }
+
+    .toast-close {
+      background: transparent;
+      border: none;
+      color: #1b1b1b;
+      font-size: 1.25rem;
+      cursor: pointer;
+      user-select: none;
+      padding: 0 0.25rem;
+      font-weight: bold;
+    }
+
+    .toast-close:hover {
+      color: #ddd;
+    }
+    .toast-update-success {
+        background-color: #e8f9e4;
+        border-left: 8px solid #4CAF50;
+    }
+
+    .toast-update-error {
+        background-color: #ffe8e6;
+        border-left: 8px solid #f44336;    
+    }
+  </style>
+</head>
+<body>
+  <div class="modals-frame">
+
+    <div class="open-buttons">
+      <button data-modal="reg-success">Open Registration Success</button>
+      <button data-modal="reg-error">Open Registration Error</button>
+      <button data-modal="verif-success">Open Verification Success</button>
+      <button data-modal="verif-error">Open Verification Error</button>
+      <button data-toast="toast-success">Show Success Toast</button>
+      <button data-toast="toast-error">Show Error Toast</button>
+
+      <button data-toast="toast-update-success">Show Update Success Toast</button>
+      <button data-toast="toast-update-error">Show Update Error Toast</button>
+    </div>
+
+    <!-- Modal Group: Verification -->
+    <div class="modal-group">
+      <!-- <div class="modal-header"><h1>Verification Modals</h1></div> -->
+
+      <div id="verif-success" class="modal-overlay">
+        <div class="modal success-modal">
+          <button class="modal-close">&times;</button>
+          <h3>Registration Successful!</h3>
+          <p>You may now log in with your account.</p>
+          <button class="modal-button success-btn">Proceed to Login</button>
+        </div>
+      </div>
+      
+      <div id="verif-error" class="modal-overlay">
+        <div class="modal error-modal">
+          <button class="modal-close">&times;</button>
+          <h3>Verification Failed</h3>
+          <p>The code you entered is invalid or expired.</p>
+          <button class="modal-button error-btn">Try Again</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Group: Registration -->
+    <div class="modal-group">
+      <!-- <div class="modal-header"><h1>Registration Modals</h1></div> -->
+
+      <div id="reg-success" class="modal-overlay">
+        <div class="modal success-modal">
+          <button class="modal-close">&times;</button>
+          <h1>Success!</h1>
+          <p>Check your email to verify your account.</p>
+          <button class="modal-button success-btn">Back to Login</button>
+        </div>
+      </div>
+
+      <div id="reg-error" class="modal-overlay">
+        <div class="modal error-modal">
+          <button class="modal-close">&times;</button>
+          <h1>Failed!</h1>
+          <p>Something went wrong. Try again.</p>
+          <button class="modal-button error-btn">Try Again</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container"></div>
+
+  <script>
+    // Modal logic
+    const openButtons = document.querySelectorAll('.open-buttons button[data-modal]');
+    const modals = document.querySelectorAll('.modal-overlay');
+  
+    openButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const modalId = btn.getAttribute('data-modal');
+        const modal = document.getElementById(modalId);
+        if(modal) {
+          modal.classList.add('active');
+        }
+      });
+    });
+  
+    modals.forEach(modal => {
+      const closeBtn = modal.querySelector('.modal-close');
+      if(closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          modal.classList.remove('active');
+        });
+      }
+      modal.addEventListener('click', (e) => {
+        if(e.target === modal) {
+          modal.classList.remove('active');
+        }
+      });
+    });
+  
+    // Toast logic
+    const toastContainer = document.querySelector('.toast-container');
+    const toastButtons = document.querySelectorAll('.open-buttons button[data-toast]');
+  
+    function createToast(type, message) {
+      const toast = document.createElement('div');
+      toast.classList.add('toast', `toast-${type}`);
+  
+      // Define icon per toast type
+      let icon = 'ℹ'; // default info icon
+      if (type === 'success' || type === 'update-success') icon = '✔';
+      else if (type === 'error' || type === 'update-error') icon = '✖';
+  
+      toast.innerHTML = `
+        <span class="toast-icon">${icon}</span>
+        <span class="toast-message">${message}</span>
+        <button class="toast-close" aria-label="Close"></button>
+      `;
+  
+      // Close button handler
+      toast.querySelector('.toast-close').addEventListener('click', () => {
+        hideToast(toast);
+      });
+  
+      toastContainer.appendChild(toast);
+  
+      // Show the toast (trigger animation)
+      setTimeout(() => {
+        toast.classList.add('show');
+      }, 10);
+  
+      // Auto hide after 3 seconds
+      setTimeout(() => {
+        hideToast(toast);
+      }, 3000);
+    }
+  
+    function hideToast(toast) {
+      toast.classList.remove('show');
+      toast.addEventListener('transitionend', () => {
+        toast.remove();
+      });
+    }
+  
+    // Button listeners to show toast
+    toastButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const toastType = btn.getAttribute('data-toast').replace('toast-', '');
+        let message = '';
+  
+        switch(toastType) {
+          case 'success':
+            message = 'Operation completed successfully!';
+            break;
+          case 'error':
+            message = 'An error occurred. Please try again.';
+            break;
+          case 'update-success':
+            message = 'Update was successful!';
+            break;
+          case 'update-error':
+            message = 'Update failed. Please try again.';
+            break;
+          default:
+            message = 'Notification';
+        }
+  
+        createToast(toastType, message);
+      });
+    });
+  </script>
+  
+</body>
+</html>
