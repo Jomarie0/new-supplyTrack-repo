@@ -82,6 +82,16 @@ body {
     padding: 10px;
     border-radius: 4px;
 }
+.toast-info {
+  background-color: #e3f2fd;
+  border-left: 8px solid #2196f3;
+}
+
+.toast-warning {
+  background-color: #fff8e1;
+  border-left: 8px solid #ff9800;
+}
+
 
 @media (max-width: 768px) {
     .sidebar {
@@ -103,3 +113,4 @@ body {
         display: block;
     }
 }
+

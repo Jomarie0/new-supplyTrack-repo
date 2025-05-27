@@ -5,6 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from django.http import JsonResponse
 from django.utils.timezone import now
+from django.contrib import messages
 
 def purchase_order_list(request):
     form = PurchaseOrderForm()
@@ -37,6 +38,7 @@ def purchase_order_list(request):
             else:
                 # For a new purchase order, just save it
                 form.save()
+                
                 return redirect('PO:purchase_order_list')
 
     purchase_orders = PurchaseOrder.objects.filter(is_deleted=False)

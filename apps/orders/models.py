@@ -50,10 +50,11 @@ class Order(models.Model):
         self.save()
 
     def save(self, *args, **kwargs):
-        if not self.unit_price:
+        if self.unit_price is None or self.unit_price == Decimal('0.00'):
             self.unit_price = self.product.price
         self.total_price = self.unit_price * self.quantity
         super().save(*args, **kwargs)
+
 
     def __str__(self):
         return f"{self.order_id} - {self.product.name}"

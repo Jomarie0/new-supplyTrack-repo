@@ -12,7 +12,7 @@ from .views import (manager_dashboard,
                     deleted_notifications,
                     restore_notifications,
                     deleted_notifications_view,
-                    strepsils_forecast_api, 
+                    # strepsils_forecast_api, 
                     product_forecast_api,
                     best_seller_api,
 
@@ -29,10 +29,11 @@ urlpatterns = [
 
     # Moved and updated Product Forecast API
     path('api/forecast/product/', product_forecast_api, name='product_forecast_api'),
-    path('api/forecast/strepsils/', strepsils_forecast_api, name='strepsils_forecast_api'), # Keep for compatibility
+    # path('api/forecast/strepsils/', strepsils_forecast_api, name='strepsils_forecast_api'), # Keep for compatibility
 
     # Best Sellers API
-    path('api/best_sellers/', best_seller_api, name='best_seller_api'),
+    path('api/best-sellers/', best_seller_api, name='best_seller_api'),
+    # path('reports/best-sellers/', best_seller_page, name='best_seller_page'),
 
     # Notification Views
     path('notifications/', restock_notifications_view, name='restock_notifications_view'),

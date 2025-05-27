@@ -129,8 +129,98 @@
     <main id="content">
         {% block content %}{% endblock %}
     </main>
+    {% comment %} ======================== toast notifs ======================== {% endcomment %}
+    <div>
+        <!-- Toast Container -->
+        <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+        </div>
 
+        <!-- Toast Template (hidden initially) -->
+        <template id="toast-template">
+            <div class="toast align-items-center text-bg-success border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body toast-message">
+                        <!-- Message will go here -->
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        </template>
+
+
+        <!-- Confirmation Modal -->
+        {% comment %} <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalLabel">Confirm Action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirmModalMessage">
+                    Are you sure you want to continue?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+                    <button type="button" class="btn btn-danger" id="confirmModalYesBtn">Yes</button>
+                </div>
+                </div>
+            </div>
+        </div> {% endcomment %}
+
+
+    </div>
     <script>
+        function showConfirmationModal(message, onConfirm) {
+            const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            document.getElementById('confirmModalMessage').textContent = message;
+
+            const yesBtn = document.getElementById('confirmModalYesBtn');
+
+            // Remove previous listeners
+            const newYesBtn = yesBtn.cloneNode(true);
+            yesBtn.parentNode.replaceChild(newYesBtn, yesBtn);
+
+            newYesBtn.addEventListener('click', () => {
+                modal.hide();
+                onConfirm();
+            });
+
+            modal.show();
+            }
+
+
+
+        function showToast(message, type = "success") {
+            const container = document.getElementById("toast-container");
+            const template = document.getElementById("toast-template");
+            const clone = template.content.cloneNode(true);
+            const toast = clone.querySelector(".toast");
+            const msgEl = clone.querySelector(".toast-message");
+
+            toast.classList.remove("text-bg-success", "text-bg-danger", "text-bg-warning");
+            toast.classList.add(`text-bg-${type}`);
+            msgEl.textContent = message;
+
+            container.appendChild(clone);
+
+            const bsToast = new bootstrap.Toast(container.lastElementChild);
+            bsToast.show();
+
+            // Optional: auto-remove after it hides
+            container.lastElementChild.addEventListener("hidden.bs.toast", function () {
+                this.remove();
+            });
+            }
+            document.addEventListener("DOMContentLoaded", function () {
+            {% if messages %}
+                {% for message in messages %}
+                    showToast("{{ message|escapejs }}", "{{ message.tags }}");
+                {% endfor %}
+            {% endif %}
+        });
+
+
+
         // To keep track of the current state of the dropdown
         let isDropdownOpen = false;
     

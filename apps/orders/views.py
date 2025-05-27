@@ -20,6 +20,8 @@ import numpy as np
 from datetime import timedelta
 from django.db.models import F, Sum, ExpressionWrapper, FloatField
 from apps.inventory.models import DemandCheckLog
+from django.contrib import messages
+
 
 
 def generate_unique_order_id():
@@ -48,6 +50,9 @@ def order_list(request):
             if not order.order_id:
                 order.order_id = generate_unique_order_id()
             order.save()
+            messages.success(request, f"Order {order.order_id}, {order.product}, {order.quantity}, {order.total_price} successfully added!")
+            # messages.success(request, f"Delivery created for Order {order.order_id}.")
+
             return redirect('orders:order_list')
 
 
