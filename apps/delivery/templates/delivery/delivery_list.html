@@ -8,11 +8,12 @@
 {% block content %}
 
     <h1 class="section-title">Delivery Management</h1>
+    {% if request.user.role == 'admin' %}
 
     <button id="addDeliveryBtn" class="button">Add Delivery</button>
     <button onclick="archiveSelected()">Archive Selected</button>
     <a href="{% url 'delivery:archive_list' %}" class="button">View Archive</a>
-
+    {% endif %}
 
     <div id="addDeliveryModal" class="modal">
         <div class="modal-content">

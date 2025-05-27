@@ -187,7 +187,7 @@ def redirect_based_on_role(user):
     elif user.role == "staff":
         return redirect("inventory:dashboard")
     else:
-        return redirect("inventory:dashboard") 
+        return redirect("delivery:delivery_list") 
 
 def login_view(request):
     if request.user.is_authenticated:
