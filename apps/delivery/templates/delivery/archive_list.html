@@ -13,17 +13,22 @@
         <tr>
             <th><input type="checkbox" id="select-all"></th>
             <th>Order ID</th>
+            <th>product name</th>
+            <th>total_price</th>
             <th>Status</th>
             <th>Delivered At</th>
         </tr>
     </thead>
     <tbody>
-        {% for delivery in deliveries %}
+        {% for delivery in deliveries reversed%}
         <tr>
             <td><input type="checkbox" class="delivery-checkbox" data-id="{{ delivery.id }}"></td>
             <td>{{ delivery.order.order_id }}</td>
+            <td>{{ delivery.order.product.name }}</td>
+            <td>{{ delivery.order.total_price }}</td>
+
             <td>{{ delivery.delivery_status }}</td>
-            <td>{{ delivery.delivered_at|default:"-" }}</td>
+            <!-- <td>{{ delivery.delivered_at|default:"-" }}</td> -->
         </tr>
         {% endfor %}
     </tbody>

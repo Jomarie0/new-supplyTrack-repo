@@ -52,18 +52,21 @@
                     <th>Order ID</th>
                     <th>Product</th>
                     <th>Quantity</th>
+                    <th>Total Price</th>
                     <th>Delivery Status</th>
                     <th>Delivered At</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                {% for delivery in deliveries %}
+                {% for delivery in deliveries reversed %}
                     <tr data-id="{{ delivery.id }}">
                         <td><input type="checkbox" class="row-checkbox"></td>
                         <td>{{ delivery.order.order_id }}</td>
                         <td>{{ delivery.order.product.name }}</td>
                         <td>{{ delivery.order.quantity }}</td>
+                        <td>{{ delivery.order.total_price }}</td>
+
                         <td>{{ delivery.delivery_status }}</td>
                         <td>{{ delivery.delivered_at|default:"Pending" }}</td>
                         <td>

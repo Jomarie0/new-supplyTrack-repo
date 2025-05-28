@@ -15,7 +15,7 @@ def get_sales_dataframe(product_id):
             product_id=product_id,
             is_deleted=False,
             status="Completed",
-            order_date__range=["2025-03-01", "2025-07-31"]
+            order_date__range=["2025-06-01", "2025-06-31",]
         )
         .values('order_date')
         .annotate(quantity_sold=Sum('quantity'))

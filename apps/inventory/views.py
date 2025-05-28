@@ -57,7 +57,7 @@ def inventory_list(request):
 
         if form.is_valid():
             form.save()
-            messages.success(request, "Product{'product_id'} successfully added!")
+            messages.success(request, f"Product{product.product_id}, {product.name} successfully added!")
             return redirect('inventory:inventory_list')
     else:
         form = ProductForm()  # Empty form for GET
@@ -314,19 +314,19 @@ def get_dashboard_stats_api(request):
     return JsonResponse(stats)
 
 
-def get_recent_activities_api(request):
-    """
-    API endpoint to get recent activities for dashboard
-    """
-    recent_orders = Order.objects.filter(
-        is_deleted=False
-    ).order_by('-order_date')[:10].values(
-        'id', 'total_price', 'status', 'order_date', 'product__name'
-    )
+# def get_recent_activities_api(request):
+#     """
+#     API endpoint to get recent activities for dashboard
+#     """
+#     recent_orders = Order.objects.filter(
+#         is_deleted=False
+#     ).order_by('-order_date')[:10].values(
+#         'id', 'total_price', 'status', 'order_date', 'product__name'
+#     )
     
-    return JsonResponse({
-        'recent_orders': list(recent_orders)
-    }, default=str)  # default=str to handle datetime serialization
+#     return JsonResponse({
+#         'recent_orders': list(recent_orders)
+#     }, default=str)  # default=str to handle datetime serialization
 
 # def best_seller_api(request):
 #     """

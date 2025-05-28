@@ -38,7 +38,7 @@
           </tr>
         </thead>
         <tbody>
-          {% for order in orders %}
+          {% for order in orders reversed %}
           <tr>
             <td><input type="checkbox" class="order-checkbox" data-id="{{ order.order_id }}"></td>
             <td>{{ order.order_id }}</td>

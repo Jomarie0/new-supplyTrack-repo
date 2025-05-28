@@ -1,4 +1,10 @@
 {% extends 'base_admin.html' %}
+{% load static %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/orders/archives.css' %}">
+{% endblock %}
+
 {% block content %}
 <h1 class="section-title">Archived Orders</h1>
 
@@ -6,7 +12,7 @@
   <a href="{% url 'orders:order_list' %}" class="btn">← Back to Customer Orders</a>
   <button onclick="restoreSelected()">Restore</button>
   <button onclick="permanentlyDeleteSelected()">Permanently Delete</button>
-</div>
+</div class="table-wrapper">
 
 <table>
   <thead>
@@ -19,7 +25,7 @@
     </tr>
   </thead>
   <tbody>
-    {% for order in archived_orders %}
+    {% for order in archived_orders reversed %}
     <tr>
       <td><input type="checkbox" class="archive-checkbox" data-id="{{ order.order_id }}"></td>
       <td>{{ order.order_id }}</td>

@@ -1,6 +1,6 @@
 import pandas as pd
 from apps.orders.models import Order
-from apps.orders.models import *
+from apps.inventory.models import *
 
 from statsmodels.tsa.holtwinters import SimpleExpSmoothing
 import matplotlib.pyplot as plt

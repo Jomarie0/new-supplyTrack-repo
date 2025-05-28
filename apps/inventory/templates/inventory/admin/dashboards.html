@@ -213,7 +213,7 @@
         </div>
         <div class="stat-card">
             <div class="stat-value" id="monthly-revenue">₱{{ monthly_revenue|default:0 }}</div>
-            <div class="stat-label">This Month's Revenue</div>
+            <div class="stat-label">This Month's Total Sales</div>
         </div>
     </div>
 
@@ -280,30 +280,34 @@
             tension: 0.4
         }]
     };
+    console.log("Labels:", {{ status_labels_json|default:'[]'|safe }});
+    console.log("Counts:", {{ status_counts_json|default:'[]'|safe }});
 
     const statusData = {
-        labels: {{ status_labels_json|safe }},
+        labels: {{ status_labels_json|default:'[]'|safe }},
         datasets: [{
-            data: {{ status_counts_json|safe }},
+            data: {{ status_counts_json|default:'[]'|safe }},
             backgroundColor: [
-                '#48bb78',  // Green for Completed
-                '#ed8936',  // Orange for Pending
-                '#4299e1',  // Blue for Processing
-                '#e53e3e'   // Red for Cancelled
+                '#e53e3e',   // Cancelled
+                '#48bb78',  // Completed
+                '#ed8936',  // Pending
             ],
             borderWidth: 0
         }]
     };
 
+
     const stockData = {
         labels: {{ products_json|safe }},
-        datasets: [{
+        datasets: [
+            {
             label: 'Stock Quantity',
             data: {{ stock_quantities_json|safe }},
             backgroundColor: 'rgba(102, 126, 234, 0.8)',
             borderColor: 'rgb(102, 126, 234)',
             borderWidth: 1
-        }]
+        }
+    ]
     };
 
     // Initialize Charts

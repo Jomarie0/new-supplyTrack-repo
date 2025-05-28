@@ -15,6 +15,8 @@ from .views import (manager_dashboard,
                     # strepsils_forecast_api, 
                     product_forecast_api,
                     best_seller_api,
+                    get_dashboard_stats_api,
+                    # get_recent_activities_api
 
                     )
 app_name = "inventory"
@@ -29,6 +31,9 @@ urlpatterns = [
 
     # Moved and updated Product Forecast API
     path('api/forecast/product/', product_forecast_api, name='product_forecast_api'),
+    path('api/dashboard-stats/', get_dashboard_stats_api, name='get_dashboard_stats_api'),
+    # path('api/recent-acts/', get_recent_activities_api, name='get_recent_activities_api'),
+
     # path('api/forecast/strepsils/', strepsils_forecast_api, name='strepsils_forecast_api'), # Keep for compatibility
 
     # Best Sellers API
