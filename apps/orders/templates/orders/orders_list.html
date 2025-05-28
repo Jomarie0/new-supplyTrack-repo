@@ -97,10 +97,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   window.closeModal = function() {
     document.getElementById('formModal').classList.add('hidden');
-    document.getElementById('hidden-order-id').value = order.order_id;
+    document.getElementById('hidden-order-id').value = '';  // clear hidden order_id on close
     document.querySelector('.submit-btn').textContent = 'Save';
     document.getElementById('order-form').reset();
   };
+
 
   window.populateFormForUpdate = function() {
     const sel = document.querySelectorAll('.order-checkbox:checked');

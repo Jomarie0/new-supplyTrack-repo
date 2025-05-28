@@ -19,7 +19,7 @@ import json
 #     return render(request, 'delivery/delivery_list.html', context)
 
 def delivery_list(request):
-    deliveries = Delivery.objects.filter(is_archived=False).select_related('order', 'order__product')
+    deliveries = Delivery.objects.filter(is_archived=False,).select_related('order', 'order__product')
     all_orders = Order.objects.all()
     return render(request, 'delivery/delivery_list.html', {
         'deliveries': deliveries,

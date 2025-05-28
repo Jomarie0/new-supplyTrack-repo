@@ -49,8 +49,8 @@ def order_list(request):
             order = form.save(commit=False)
             if not order.order_id:
                 order.order_id = generate_unique_order_id()
-            order.save()
             messages.success(request, f"Order {order.order_id}, {order.product}, {order.quantity}, {order.total_price} successfully added!")
+            order.save()
             # messages.success(request, f"Delivery created for Order {order.order_id}.")
 
             return redirect('orders:order_list')

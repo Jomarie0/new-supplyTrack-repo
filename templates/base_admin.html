@@ -86,7 +86,7 @@
                     </span>
                 </a>
                 </li>
-                <li><a href="{% url 'delivery:delivery_list' %}" class="menu-item">Delivery</a></li>
+                <!-- <li><a href="{% url 'delivery:delivery_list' %}" class="menu-item">Delivery</a></li> -->
 
             {% elif request.user.role == 'manager' %}
             <li><a href="{% url 'inventory:dashboard' %}" class="menu-item">Dashboard</a></li>

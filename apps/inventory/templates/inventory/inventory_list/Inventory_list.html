@@ -156,20 +156,19 @@
     document.querySelector('.search-input').addEventListener('input', function (e) {
         const keyword = e.target.value.toLowerCase();
         const rows = document.querySelectorAll('.inventory-table tbody tr');
-    
+
         rows.forEach(row => {
-            const [checkbox, id, name, desc] = row.children;
-            const idText = id.textContent.toLowerCase();
-            const nameText = name.textContent.toLowerCase();
-            const descText = desc.textContent.toLowerCase();
-    
-            if (idText.includes(keyword) || nameText.includes(keyword) || descText.includes(keyword)) {
+            const cells = Array.from(row.children);
+            const rowText = cells.map(cell => cell.textContent.toLowerCase()).join(' ');
+
+            if (rowText.includes(keyword)) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
             }
         });
     });
+
 
     // CSRF Token helper
     function getCSRFToken() {
