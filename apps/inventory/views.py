@@ -1,35 +1,29 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from .models import Product,DemandCheckLog
+from .models import Product, DemandCheckLog, StockMovement
 from .forms import ProductForm, StockMovementForm
 from django.http import JsonResponse
-from apps.orders.models import Order  # adjust if needed
 from django.views.decorators.csrf import csrf_exempt
 import json
 from django.db.models.functions import TruncMonth
-from django.db.models import Sum, Count
-from django.utils.timezone import now
-from django.utils import timezone
+from django.db.models import Sum, Count, F, ExpressionWrapper, DecimalField
 
-from django.utils.timezone import now
-from django.db.models.functions import TruncMonth
-from django.db.models import Sum
+# IMPORTANT: Adjust these timezone imports
+import datetime # <--- Keep this for datetime.datetime if you construct dates manually
+from django.utils import timezone as django_timezone # <--- Alias Django's timezone module!
+
+# Imports for forecasting
 from sklearn.linear_model import LinearRegression
 import pandas as pd
 import numpy as np
-from datetime import timedelta
-from django.db.models import F, Sum, ExpressionWrapper, FloatField
-from apps.inventory.models import DemandCheckLog
+from datetime import timedelta, timezone # Keep this as it's datetime.timedelta
+from decimal import Decimal
 from django.contrib import messages
 
-# from .utils.forecasting import forecast_stock_demand_from_orders
+# Corrected Imports for Order and OrderItem
+from apps.orders.models import Order, OrderItem
 
-
-
-# @login_required
-# def admin_dashboard(request):
-#     return render(request, "inventory/admin/admin_dashboard.html")
-
+# Your existing dashboard views (manager_dashboard, staff_dashboard)
 @login_required
 def manager_dashboard(request):
     return render(request, "inventory/manager/manager_dashboard.html")
@@ -42,25 +36,26 @@ def staff_dashboard(request):
 @login_required
 def inventory_list(request):
     products = Product.objects.filter(is_deleted=False)
-
     movement_form = StockMovementForm()
 
     if request.method == 'POST':
-        product_id = request.POST.get('product_id')  # This is the custom product ID
-
-        # Check if a product exists with that custom product_id
+        product_id_input = request.POST.get('product_id_input') # Renamed to avoid conflict
         try:
-            product = Product.objects.get(product_id=product_id)
-            form = ProductForm(request.POST, instance=product)  # Update
+            # Assuming product_id on Product model is the unique identifier you use
+            product = Product.objects.get(product_id=product_id_input)
+            form = ProductForm(request.POST, request.FILES, instance=product)
         except Product.DoesNotExist:
-            form = ProductForm(request.POST)  # Create new
+            form = ProductForm(request.POST, request.FILES)
 
         if form.is_valid():
             form.save()
-            messages.success(request, f"Product{product.product_id}, {product.name} successfully added!")
+            messages.success(request, f"Product successfully added/updated!")
             return redirect('inventory:inventory_list')
+        else:
+            messages.error(request, "Error saving product. Please check the form.")
+            print(form.errors) # For debugging in console
     else:
-        form = ProductForm()  # Empty form for GET
+        form = ProductForm()
 
     context = {
         'products': products,
@@ -68,6 +63,7 @@ def inventory_list(request):
         'movement_form': movement_form,
     }
     return render(request, 'inventory/inventory_list/inventory_list.html', context)
+
 
 @login_required
 def archive_list(request):
@@ -114,21 +110,8 @@ def restore_products(request):
 
 
 # ---------------------- D A S H  B O A R D ------------------------- #
-import json
-from django.shortcuts import render
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Sum, Count, Q
-from django.db.models.functions import TruncMonth
-from django.utils import timezone
-from datetime import timedelta, datetime
-import pandas as pd
-import numpy as np
-from sklearn.linear_model import LinearRegression
 
-# Import your models here
-# from .models import Product, Order, DemandCheckLog
-
+@login_required
 def dashboard(request):
     """
     Main dashboard view with all necessary data for charts and statistics
@@ -136,35 +119,40 @@ def dashboard(request):
     # BASIC STATISTICS
     total_products = Product.objects.count()
     low_stock_count = DemandCheckLog.objects.filter(restock_needed=True, is_deleted=False).count()
-
-    # low_stock_count = Product.objects.filter(stock_quantity__lt=10).count()  # Adjust threshold as needed
     total_orders = Order.objects.filter(is_deleted=False).count()
     
-    # Calculate current month's revenue
-    current_month = timezone.now().replace(day=1)
-    monthly_revenue = Order.objects.filter(
-        is_deleted=False,
-        status="Completed",
-        order_date__gte=current_month
-    ).aggregate(total=Sum('total_price'))['total'] or 0
+    # Calculate current month's revenue (FIXED)
+    current_month_start = django_timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    monthly_revenue = OrderItem.objects.filter(
+        order__is_deleted=False, # Filter order itself
+        order__status="Completed",
+        order__order_date__gte=current_month_start
+    ).aggregate(
+        total=Sum(ExpressionWrapper(F('quantity') * F('price_at_order'), output_field=DecimalField()))
+    )['total'] or Decimal('0.00') # Default to Decimal('0.00')
 
     # STOCK DATA
-    products = list(Product.objects.values_list('name', flat=True))
-    stock_quantities = list(Product.objects.values_list('stock_quantity', flat=True))
-    product_names = Product.objects.values_list('name', flat=True).distinct()
+    products_for_chart = list(Product.objects.values_list('name', flat=True))
+    stock_quantities_for_chart = list(Product.objects.values_list('stock_quantity', flat=True))
+    product_names_distinct = Product.objects.values_list('name', flat=True).distinct()
 
-    # SALES DATA - Monthly sales trend
-    sales_by_month = (
-        Order.objects
-        .filter(is_deleted=False, status="Completed")
-        .annotate(month=TruncMonth('order_date'))
+    # SALES DATA - Monthly sales trend (FIXED)
+    # Aggregate sales from OrderItem to get accurate totals
+    sales_by_month_data = (
+        OrderItem.objects
+        .filter(
+            order__is_deleted=False,
+            order__status="Completed"
+        )
+        .annotate(month=TruncMonth('order__order_date')) # Truncate by order_date
         .values('month')
-        .annotate(total_sales=Sum('total_price'))
+        .annotate(total_sales=Sum(ExpressionWrapper(F('quantity') * F('price_at_order'), output_field=DecimalField())))
         .order_by('month')
     )
 
-    months = [entry['month'].strftime('%b %Y') for entry in sales_by_month]
-    sales_totals = [float(entry['total_sales']) for entry in sales_by_month]
+    months = [entry['month'].strftime('%b %Y') for entry in sales_by_month_data]
+    sales_totals = [float(entry['total_sales']) for entry in sales_by_month_data]
+
 
     # ORDER STATUS DATA
     order_status_counts = (
@@ -176,7 +164,7 @@ def dashboard(request):
     status_labels = [entry['status'] for entry in order_status_counts]
     status_counts = [entry['count'] for entry in order_status_counts]
 
-    # RECENT ORDERS (optional - for additional dashboard info)
+    # RECENT ORDERS
     recent_orders = Order.objects.filter(
         is_deleted=False
     ).order_by('-order_date')[:5]
@@ -189,31 +177,26 @@ def dashboard(request):
         'monthly_revenue': round(monthly_revenue, 2),
         
         # Chart data (JSON serialized for JavaScript)
-        'products_json': json.dumps(products),
-        'stock_quantities_json': json.dumps(stock_quantities),
+        'products_json': json.dumps(products_for_chart),
+        'stock_quantities_json': json.dumps(stock_quantities_for_chart),
         'months_json': json.dumps(months),
         'sales_totals_json': json.dumps(sales_totals),
         'status_labels_json': json.dumps(status_labels),
         'status_counts_json': json.dumps(status_counts),
         
         # Raw data for template
-        'product_names': product_names,
+        'product_names': product_names_distinct,
         'recent_orders': recent_orders,
     }
     
     return render(request, 'inventory/admin/dashboards.html', context)
 
 
-# Your existing product_forecast_api function should remain unchanged since it's already working
-# I'm just providing the dashboard view to work with your existing setup
-
 @csrf_exempt  
 def product_forecast_api(request):
     """
-    Your existing forecast API - keeping it exactly as it was working
+    Forecasting API - Corrected to use OrderItem for product-specific sales data
     """
-    global forecast, forecast_qty, current_stock
-    
     # Get product name from query parameters or POST data
     if request.method == 'GET':
         product_name = request.GET.get('product')
@@ -229,56 +212,68 @@ def product_forecast_api(request):
     except Product.DoesNotExist:
         return JsonResponse({'error': f'{product_name} product not found'}, status=404)
     except Product.MultipleObjectsReturned:
-        product = Product.objects.filter(name__icontains=product_name).first()
+        product = Product.objects.filter(name__icontains=product_name).first() # Take the first if multiple found
 
-    sales = (
-        Order.objects
-        .filter(product=product, is_deleted=False)
-        .annotate(month=TruncMonth('order_date'))
+    # FIXED: Query OrderItem to get sales quantity for a specific product
+    sales_data = (
+        OrderItem.objects
+        .filter(
+            product_variant__product=product, # Filter by the product linked via product_variant
+            order__is_deleted=False, # Filter order itself
+            order__status="Completed" # Only count completed sales
+        )
+        .annotate(month=TruncMonth('order__order_date')) # Aggregate by order date
         .values('month')
-        .annotate(total_quantity=Sum('quantity'))
+        .annotate(total_quantity=Sum('quantity')) # Sum quantities from OrderItem
         .order_by('month')
     )
 
-    if not sales:
+    if not sales_data:
         return JsonResponse({'error': f'No sales data available for {product.name}'}, status=404)
 
     # --- Forecasting ---
-    df = pd.DataFrame(sales)
+    df = pd.DataFrame(sales_data)
     df['month'] = pd.to_datetime(df['month'])
-    df = df.set_index('month').asfreq('MS').fillna(0)
+    df = df.set_index('month').asfreq('MS').fillna(0) # Fill missing months with 0
     df['month_num'] = np.arange(len(df))
+
+    # Check if there's enough data for regression (at least 2 points)
+    if len(df) < 2:
+        return JsonResponse({'error': f'Not enough sales data for {product.name} to forecast. Need at least 2 months of data.'}, status=400)
 
     model = LinearRegression()
     model.fit(df[['month_num']], df['total_quantity'])
-    future_months = np.arange(len(df), len(df) + 2).reshape(-1, 1)
+    
+    # Forecast for the next 5 months (adjust as needed)
+    future_months_num = np.arange(len(df), len(df) + 5).reshape(-1, 1)
+    predictions = model.predict(future_months_num)
 
-    future_months_df = pd.DataFrame(future_months, columns=['month_num'])
-    predictions = model.predict(future_months_df)
-
-    future_dates = pd.date_range(start=df.index[-1] + pd.offsets.MonthBegin(), periods=2, freq='MS')
+    # Generate future dates for chart labels
+    last_known_month = df.index[-1]
+    future_dates = pd.date_range(start=last_known_month + pd.offsets.MonthBegin(), periods=5, freq='MS')
 
     # --- Demand Check ---
-    forecast_qty = predictions[0]  # The new accurate forecast
+    forecast_qty = predictions[0]  # The forecast for the very next month
+    if forecast_qty < 0: # Forecast should not be negative
+        forecast_qty = 0
+
     current_stock = product.stock_quantity
     restock_needed = forecast_qty > current_stock
 
-    # Try to find a recent existing log
+    # Try to find a recent existing log (within last 1 hour)
     recent_log = DemandCheckLog.objects.filter(
         product=product,
         is_deleted=False,
-        checked_at__gte=timezone.now() - timedelta(hours=1)  # within 1 hour
+        checked_at__gte=django_timezone.now() - timedelta(hours=1)
     ).first()
 
     if recent_log:
-        # ✅ Update existing log with the newest forecast
         recent_log.forecasted_quantity = round(forecast_qty)
         recent_log.current_stock = current_stock
         recent_log.restock_needed = restock_needed
-        recent_log.checked_at = timezone.now()
+        recent_log.checked_at = django_timezone.now()
         recent_log.save()
     else:
-        # ✅ Or create a new one if none found
         DemandCheckLog.objects.create(
             product=product,
             forecasted_quantity=round(forecast_qty),
@@ -286,12 +281,12 @@ def product_forecast_api(request):
             restock_needed=restock_needed
         )
 
-    actual = [{"label": date.strftime("%Y-%m"), "value": int(val)} for date, val in df['total_quantity'].items()]
-    forecast = [{"label": date.strftime("%Y-%m"), "value": int(val)} for date, val in zip(future_dates, predictions)]
+    actual_sales_data = [{"label": date.strftime("%Y-%m"), "value": int(val)} for date, val in df['total_quantity'].items()]
+    forecast_sales_data = [{"label": date.strftime("%Y-%m"), "value": int(val)} for date, val in zip(future_dates, predictions)]
 
     return JsonResponse({
-        "actual": actual,
-        "forecast": forecast,
+        "actual": actual_sales_data,
+        "forecast": forecast_sales_data,
         "product_name": product.name,
         "restock_needed": bool(restock_needed),
         "forecasted_quantity": int(round(forecast_qty)),
@@ -299,108 +294,43 @@ def product_forecast_api(request):
     })
 
 
-# Additional helper views you might want to add
-
-def get_dashboard_stats_api(request):
-    """
-    API endpoint to get real-time dashboard statistics
-    """
-    stats = {
-        'total_products': Product.objects.count(),
-        'low_stock_count': Product.objects.filter(stock_quantity__lt=10).count(),
-        'total_orders': Order.objects.filter(is_deleted=False).count(),
-        'pending_orders': Order.objects.filter(is_deleted=False, status='Pending').count(),
-    }
-    return JsonResponse(stats)
-
-
-# def get_recent_activities_api(request):
-#     """
-#     API endpoint to get recent activities for dashboard
-#     """
-#     recent_orders = Order.objects.filter(
-#         is_deleted=False
-#     ).order_by('-order_date')[:10].values(
-#         'id', 'total_price', 'status', 'order_date', 'product__name'
-#     )
-    
-#     return JsonResponse({
-#         'recent_orders': list(recent_orders)
-#     }, default=str)  # default=str to handle datetime serialization
-
-# def best_seller_api(request):
-#     """
-#     Enhanced API endpoint that returns best sellers with both quantity and revenue data
-#     """
-#     try:
-#         # Get best sellers with both quantity and revenue metrics
-#         best_sellers = (
-#             Order.objects
-#             .filter(is_deleted=False, status="Completed")
-#             .values('product__name')
-#             .annotate(
-#                 total_quantity=Sum('quantity'),
-#                 total_revenue=Sum('total_price'),
-#                 product_name=F('product__name')
-#             )
-#             .order_by('-total_quantity')[:10]  # Top 10 best sellers
-#         )
-        
-#         # Convert to list and ensure we have both metrics
-#         best_sellers_list = []
-#         for item in best_sellers:
-#             best_sellers_list.append({
-#                 'product_name': item['product_name'],
-#                 'total_quantity': int(item['total_quantity'] or 0),
-#                 'total_revenue': float(item['total_revenue'] or 0)
-#             })
-        
-#         return JsonResponse(best_sellers_list, safe=False)
-        
-#     except Exception as e:
-#         # Return dummy data if there's an error (like no Order model)
-#         dummy_data = [
-#             {'product_name': 'Product A', 'total_quantity': 150, 'total_revenue': 1500.00},
-#             {'product_name': 'Product B', 'total_quantity': 120, 'total_revenue': 2400.00},
-#             {'product_name': 'Product C', 'total_quantity': 100, 'total_revenue': 1000.00},
-#             {'product_name': 'Product D', 'total_quantity': 80, 'total_revenue': 1600.00},
-#             {'product_name': 'Product E', 'total_quantity': 75, 'total_revenue': 750.00},
-#         ]
-#         return JsonResponse(dummy_data, safe=False)
-
-from django.db.models import Sum, F
-from django.http import JsonResponse
-
+@csrf_exempt
 def best_seller_api(request):
+    """
+    Enhanced API endpoint that returns best sellers with both quantity and revenue data
+    Corrected to aggregate through OrderItem and ProductVariant
+    """
     try:
         best_sellers = (
-            Order.objects
-            .filter(is_deleted=False, status="Completed")
-            .values('product__name')
-            .annotate(
-                total_quantity=Sum('quantity'),
-                total_revenue=Sum('total_price'),
-                product_name=F('product__name')
+            OrderItem.objects
+            .filter(
+                order__is_deleted=False,
+                order__status="Completed"
             )
-            .order_by('-total_quantity')[:5]
+            .values('product_variant__product__name') # Group by actual product name
+            .annotate(
+                # Sum quantity from OrderItem
+                total_quantity=Sum('quantity'),
+                # Sum (quantity * price_at_order) for revenue
+                total_revenue=Sum(ExpressionWrapper(F('quantity') * F('price_at_order'), output_field=DecimalField())),
+                product_name=F('product_variant__product__name') # Ensure product_name is available for grouping/selection
+            )
+            .order_by('-total_quantity')[:5] # Top 5 best sellers
         )
-
-        best_sellers_list = [
-            {
+        
+        best_sellers_list = []
+        for item in best_sellers:
+            best_sellers_list.append({
                 'product_name': item['product_name'],
                 'total_quantity': int(item['total_quantity'] or 0),
-                'total_revenue': float(item['total_revenue'] or 0),
-            }
-            for item in best_sellers
-        ]
-
+                'total_revenue': float(item['total_revenue'] or 0) # Convert Decimal to float for JSON serialization
+            })
+        
         return JsonResponse(best_sellers_list, safe=False)
-
+        
     except Exception as e:
-        # Log the error if you want (optional)
-        # logger.error(f"Error in best_seller_api: {e}", exc_info=True)
-
-        # Return dummy data on error
+        print(f"Error in best_seller_api: {e}") # Log the actual error for debugging
+        # Return dummy data if there's an error (like no data or unexpected issue)
         dummy_data = [
             {'product_name': 'Product A', 'total_quantity': 150, 'total_revenue': 1500.00},
             {'product_name': 'Product B', 'total_quantity': 120, 'total_revenue': 2400.00},
@@ -409,7 +339,6 @@ def best_seller_api(request):
             {'product_name': 'Product E', 'total_quantity': 75, 'total_revenue': 750.00},
         ]
         return JsonResponse(dummy_data, safe=False)
-
 
 
 def restock_notifications_api(request):
@@ -432,7 +361,6 @@ def restock_notifications_api(request):
     return JsonResponse(data, safe=False)
 
 
-
 def restock_notifications_view(request):
     logs = DemandCheckLog.objects.filter(
         restock_needed=True,
@@ -441,7 +369,6 @@ def restock_notifications_view(request):
     context = {'logs': logs}
     return render(request, 'inventory/notification/notification_list.html', context)
 
-# New view to handle soft deleting notifications
 @csrf_exempt
 def deleted_notifications(request):
     if request.method == 'POST':
@@ -450,12 +377,11 @@ def deleted_notifications(request):
 
         if ids:
             for log in DemandCheckLog.objects.filter(id__in=ids, is_deleted=False):
-                log.delete()  # This will trigger soft delete
+                log.delete()
             return JsonResponse({'status': 'success', 'deleted_count': len(ids)})
         return JsonResponse({'status': 'no ids provided'}, status=400)
     return JsonResponse({'status': 'invalid method'}, status=405)
 
-# View to restore soft-deleted notifications
 @csrf_exempt
 def restore_notifications(request):
     if request.method == 'POST':
@@ -469,13 +395,11 @@ def restore_notifications(request):
         return JsonResponse({'status': 'no ids provided'}, status=400)
     return JsonResponse({'status': 'invalid method'}, status=405)
 
-# View to see deleted notifications
 def deleted_notifications_view(request):
     logs = DemandCheckLog.objects.filter(is_deleted=True).order_by('-deleted_at')
     context = {'logs': logs}
     return render(request, 'inventory/notification/deleted_notifications.html', context)
 
-# Auto-dismiss resolved notifications (soft delete them)
 def auto_dismiss_resolved_notifications():
     """
     Automatically soft-delete notifications that are no longer needed
@@ -485,9 +409,13 @@ def auto_dismiss_resolved_notifications():
     
     for log in logs:
         current_stock = log.product.stock_quantity
-        if current_stock >= log.forecasted_quantity:
-            log.delete()  # Soft delete
+        # Check if current_stock is greater than or equal to forecasted_quantity AND if forecast_qty is not 0
+        # If forecast_qty is 0, it means no demand, so it's effectively resolved if stock > 0
+        if current_stock >= log.forecasted_quantity and log.forecasted_quantity > 0:
+            log.delete()
+            dismissed_count += 1
+        elif log.forecasted_quantity == 0 and current_stock > 0: # If no demand and stock is available
+            log.delete()
             dismissed_count += 1
     
     return dismissed_count
-

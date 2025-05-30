@@ -1,0 +1,51 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+{# apps/store/templates/store/base_store.html #}
+<header>
+    <nav>
+        <div class="logo">
+            <a href="{% url 'store:product_list' %}">SupplyTrack Store</a>
+        </div>
+        <ul class="nav-links">
+            <li><a href="{% url 'store:product_list' %}">Shop All</a></li>
+            {# ... category links ... #}
+            
+            {# ADD THIS CART LINK #}
+            <li>
+                <a href="{% url 'store:cart_view' %}">
+                    Cart 
+                    {% if request.user.is_authenticated and request.user.cart.items.count > 0 %}
+                        ({{ request.user.cart.items.count }})
+                    {% elif not request.user.is_authenticated %}
+                        {# For anonymous users, you'd need to fetch cart count via context processor or AJAX #}
+                        {# For now, just show 'Cart' #}
+                        (<span id="anon-cart-count">0</span>) {# This would require JS to update #}
+                    {% endif %}
+                </a>
+            </li>
+
+            {# ... login/logout links ... #}
+            {% if request.user.is_authenticated == False %}
+                <li><a href="{% url 'users:login' %}" class="menu-item">login</a></li>
+            {% endif %}
+            {% if request.user.is_authenticated == True %}
+                <li><a href="{% url 'users:logout_view' %}" class="menu-item">logout</a></li>
+            {% endif %}
+
+        </ul>
+    </nav>
+</header>
+    <div>
+    {% block content %}
+
+    {% endblock %}
+    </div>
+</body>
+</html>

@@ -39,7 +39,7 @@
                         <td><input type="checkbox" class="user-checkbox" data-id="{{ user.id }}"></td>
                         <td>{{ user.username }}</td>
                         <td>{{ user.email }}</td>
-                        <td>{{ user.get_role_display }}</td>  <!-- Assuming roles are choices in the model -->
+                        <td>{{ user.role }}</td>  <!-- Assuming roles are choices in the model -->
                         <!-- <td>{{ user.created_at|date:"Y-m-d H:i" }}</td>
                         <td>{{ user.updated_at|date:"Y-m-d H:i" }}</td> -->
                     </tr>

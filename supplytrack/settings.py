@@ -31,8 +31,7 @@ SECRET_KEY = 'django-insecure-4ysb8d2$hw-o6+bowuqc*2#x2fg=xdkrtldj!8f8bfnte)f4o*
 DEBUG = True
 
 ALLOWED_HOSTS = []
-LOGIN_URL = '/users/login/'
-
+LOGIN_URL = '/store/'
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 # EMAIL_HOST = 'smtp.gmail.com'           # or your actual mail server
 # EMAIL_PORT = 587
@@ -69,6 +68,8 @@ INSTALLED_APPS = [
     'apps.purchase_orders',
     'apps.delivery.apps.DeliveryConfig',
     'apps.orders.apps.OrdersConfig',
+    'apps.store',
+    'apps.transactions',
 
     # REST
     'rest_framework',

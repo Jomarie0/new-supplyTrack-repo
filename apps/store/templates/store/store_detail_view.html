@@ -1,0 +1,86 @@
+{% extends "base_store.html" %} {# Ensure this path is correct #}
+{% load static %}
+{% block title %}{{ product.name }} - Product Detail{% endblock %} {# Sets the page title dynamically #}
+
+{% block content %}
+    <div class="container product-detail-page">
+        <a href="{% url 'store:product_list' %}" class="back-link">← Back to All Products</a>
+
+        <div class="product-detail-grid">
+            <div class="product-detail-image">
+                {% if product.image %}
+                    {# Assuming you will add an ImageField named 'image' to your Product model #}
+                    <img src="{{ product.image.url }}" alt="{{ product.name }}">
+                {% else %}
+                    {# Placeholder image if no product image exists or if 'image' field is not set up yet #}
+                    <img src="https://via.placeholder.com/400x400?text=No+Image" alt="No Image Available">
+                    {# Alternatively, if you have a static placeholder: #}
+                    {# <img src="{% static 'store/images/placeholder.png' %}" alt="No Image Available"> #}
+                {% endif %}
+            </div>
+
+            <div class="product-detail-info">
+                <h1>{{ product.name }}</h1>
+                
+                {% if product.category %}
+                    <p class="product-category">
+                        Category: <a href="{% url 'store:category_products' slug=product.category.slug %}">
+                            {{ product.category.name }}
+                        </a>
+                    </p>
+                {% endif %}
+
+                <p class="product-price">
+                    Price: <strong>₱{{ product.price|floatformat:2 }}</strong>
+                </p>
+                
+                <div class="product-availability">
+                    {% if product.stock_quantity > 0 %}
+                        <p class="in-stock">
+                            Availability: In Stock ({{ product.stock_quantity }} {{ product.unit }})
+                        </p>
+                        <button class="btn btn-primary add-to-cart-btn">Add to Cart</button> {# Placeholder for future cart functionality #}
+                    {% else %}
+                        <p class="out-of-stock">
+                            Availability: Out of Stock
+                        </p>
+                        <button class="btn btn-secondary add-to-cart-btn" disabled>Out of Stock</button>
+                    {% endif %}
+                </div>
+
+                {% if product.description %}
+                    <div class="product-description">
+                        <h3>Description</h3>
+                        <p>{{ product.description|linebreaksbr }}</p>
+                    </div>
+                {% endif %}
+
+                {% if product.supplier %}
+                    <p class="product-supplier">
+                        Supplier: {{ product.supplier.name }}
+                    </p>
+                {% endif %}
+
+            </div>
+        </div>
+        <div class="product-availability">
+    {% if product.stock_quantity > 0 %}
+        <p class="in-stock">
+            Availability: In Stock ({{ product.stock_quantity }} {{ product.unit }})
+        </p>
+        <form action="{% url 'store:add_to_cart' product_id=product.id %}" method="post">
+            {% csrf_token %}
+            <label for="quantity">Quantity:</label>
+            <input type="number" id="quantity" name="quantity" value="1" min="1" max="{{ product.stock_quantity }}">
+            <button type="submit" class="btn btn-primary add-to-cart-btn">Add to Cart</button>
+        </form>
+    {% else %}
+        <p class="out-of-stock">
+            Availability: Out of Stock
+        </p>
+        <button class="btn btn-secondary add-to-cart-btn" disabled>Out of Stock</button>
+    {% endif %}
+</div>
+
+    </div>
+{% endblock %}

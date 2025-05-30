@@ -1,0 +1,47 @@
+{% extends 'base_store.html' %} 
+
+{% block content %}
+<div class="container my-5">
+    <h2>Checkout</h2>
+
+    {# Make sure you include Django messages here, e.g., for general warnings/success #}
+    {% include 'messages.html' %} 
+
+    <form method="post" action="{% url 'orders:checkout' %}">
+        {% csrf_token %}
+
+        {# Display non-field errors (e.g., errors related to the whole form) #}
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                <strong>Error:</strong>
+                <ul>
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {# Loop through form fields to display them with their individual errors #}
+        {% for field in form %}
+            <div class="mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <div class="form-text">{{ field.help_text }}</div>
+                {% endif %}
+                {# **THIS IS THE IMPORTANT PART FOR FIELD-SPECIFIC ERRORS** #}
+                {% if field.errors %}
+                    <div class="alert alert-danger mt-1">
+                        {% for error in field.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        <button type="submit" class="btn btn-primary">Place Order</button>
+    </form>
+</div>
+{% endblock %}

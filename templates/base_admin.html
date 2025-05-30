@@ -10,8 +10,14 @@
             Manager | Panel
         {% elif request.user.role == 'staff' %}
             Staff | Panel
-        {% else %}
+        {% elif request.user.role == 'customer' %}
+            Customer | Panel
+        {% elif request.user.role == 'supplier' %}
+            Supplier | Panel
+        {% elif request.user.role == 'delivery' %}
             Delivery | Panel
+        {% else %}
+            empty
         {% endif %}
     {% endblock %}
     </title>
@@ -118,6 +124,23 @@
                         Customer Orders
                     </a>
                 </li>
+            {% elif request.user.role == 'customer' %}
+                <li>
+                    <li><a href="{% url 'inventory:dashboard' %}" class="menu-item">Dashboard</a></li>
+                <li><a href="{% url 'inventory:inventory_list' %}" class="menu-item">Inventory</a></li>
+                    <a href="{% url 'orders:order_list' %}" class="submenu-item {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}">
+                        Customer Orders
+                    </a>
+                </li>
+            {% elif request.user.role == 'supplier' %}
+                <li>
+                    <li><a href="{% url 'inventory:dashboard' %}" class="menu-item">Dashboard</a></li>
+                <li><a href="{% url 'inventory:inventory_list' %}" class="menu-item">Inventory</a></li>
+                    <a href="{% url 'orders:order_list' %}" class="submenu-item {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}">
+                        Customer Orders
+                    </a>
+                </li>
+
             {% endif %}
                 <li><a href="{% url 'delivery:delivery_list' %}" class="menu-item">Delivery</a></li>
 

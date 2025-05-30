@@ -1,31 +1,27 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import login, authenticate, logout
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import login, authenticate, logout, get_user_model
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from .forms import CustomUserCreationForm
-from django.contrib.auth import login, logout
+from django.core.mail import send_mail
+from django.core.exceptions import ValidationError
+from django.http import HttpResponseForbidden, JsonResponse
+from django.urls import reverse
+from django.utils.timezone import now
+from datetime import timedelta
+import random
+import json
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .models import User
+
+from .forms import CustomUserCreationForm
+from .models import User, EmailVerification
 from .serializer import UserRegistrationSerializer, UserSerializer
-from django.http import HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-import json
-import random
-from django.core.mail import send_mail
-from .models import EmailVerification
-from django.shortcuts import get_object_or_404
-import datetime
-from django.utils.timezone import now
-from datetime import timedelta
-from django.core.exceptions import ValidationError
-from django.contrib.auth.hashers import make_password
-from django.urls import reverse
-from django.contrib.auth import get_user_model
+
 
 def generate_verification_code():
     return str(random.randint(100000, 999999))
@@ -186,6 +182,10 @@ def redirect_based_on_role(user):
         return redirect("inventory:dashboard")
     elif user.role == "staff":
         return redirect("inventory:dashboard")
+    elif user.role == "supplier":
+        return redirect("inventory:dashboard")
+    elif user.role == "customer":
+        return redirect("store:product_list")
     else:
         return redirect("delivery:delivery_list") 
 
@@ -301,7 +301,7 @@ def logout(request):
 def logout_view(request):
     logout(request)  
     request.session.flush()  
-    return redirect("users:login")
+    return redirect("store:product_list")
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

@@ -59,28 +59,29 @@
                 </tr>
             </thead>
             <tbody>
-                {% for delivery in deliveries reversed %}
-                    <tr data-id="{{ delivery.id }}">
-                        <td><input type="checkbox" class="row-checkbox"></td>
+                {% for delivery in deliveries %}
+                    <tr>
                         <td>{{ delivery.order.order_id }}</td>
-                        <td>{{ delivery.order.product.name }}</td>
-                        <td>{{ delivery.order.quantity }}</td>
-                        <td>{{ delivery.order.total_price }}</td>
-
+                        <td>{{ delivery.order.customer.username }}</td> {# If customer exists #}
                         <td>{{ delivery.delivery_status }}</td>
-                        <td>{{ delivery.delivered_at|default:"Pending" }}</td>
                         <td>
-                            {% if delivery.delivery_status != 'delivered' %}
-                                <a href="{% url 'delivery:confirm_delivery' delivery.id %}" class="confirm-btn">Confirm Delivery</a>
-                            {% else %}
-                                <span class="confirmed-text">Delivered</span>
-                            {% endif %}
+                            <ul>
+                                {% for item in delivery.order.items.all %}
+                                    <li>
+                                        {{ item.product_variant.product.name }}
+                                        {% if item.product_variant.sku %}({{ item.product_variant.sku }}){% endif %}
+                                        x {{ item.quantity }}
+                                        (@₱{{ item.price_at_order }})
+                                    </li>
+                                {% empty %}
+                                    <li>No items found for this order.</li>
+                                {% endfor %}
+                            </ul>
                         </td>
+                        <td>{{ delivery.delivered_at|default:"N/A" }}</td>
+                        {# ... other delivery details ... #}
                     </tr>
-                {% empty %}
-                    <tr><td colspan="6">No deliveries found.</td></tr>
                 {% endfor %}
-            </tbody>
         </table>
     </div>
 

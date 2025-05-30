@@ -5,7 +5,7 @@ User = get_user_model()
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ("username", "email", "is_staff", "is_superuser")
-    search_fields = ("username", "email")
+    list_display = ("username", "email", "is_staff", "is_superuser", "role")
+    search_fields = ("username", "email","role")
 
 # If using a custom User model, ensure it's in AUTH_USER_MODEL

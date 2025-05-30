@@ -5,7 +5,7 @@ from django.http import HttpResponseRedirect
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', lambda request: HttpResponseRedirect('/users/login/')),
+    path('', lambda request: HttpResponseRedirect('/store/')),
 
     path('users/', include('apps.users.urls')),
     # path('users/', include('apps.users.urls')),
@@ -13,8 +13,6 @@ urlpatterns = [
     path("orders/", include("apps.orders.urls")), 
     path('purchase_orders/', include("apps.purchase_orders.urls")), 
     path('delivery/', include('apps.delivery.urls')), # Include delivery app URLs
- 
-
-
+    path('store/', include('apps.store.urls')),
     
 ]

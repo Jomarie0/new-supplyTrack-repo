@@ -1,12 +1,15 @@
+# apps/orders/urls.py
+
 from django.urls import path
-from . views import (
+from .views import (
     order_list,
     delete_orders,
     archived_orders,
     permanently_delete_orders,
     restore_orders,
-
-    # restock_notifications_api,
+    checkout_view,
+    order_confirmation_view,
+    my_orders_view,
 )
 
 app_name = 'orders'
@@ -18,8 +21,10 @@ urlpatterns = [
     path('permanent-delete/', permanently_delete_orders, name='permanent_delete_orders'),
     path('restore/', restore_orders, name='restore_orders'),
 
-    # path('api/restock-notifications/', restock_notifications_api, name='restock_notifications_api'),
+    # NEW Checkout Paths
+    path('checkout/', checkout_view, name='checkout'),
+    path('confirmation/<int:order_id>/', order_confirmation_view, name='order_confirmation'),
 
-
+    path('my-orders/', my_orders_view, name='my_orders'),
 
 ]

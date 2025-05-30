@@ -25,16 +25,15 @@
       <table class="orders-table">
         <thead>
           <tr>
-            <th><input type="checkbox" id="select-all"></th>
+            <th></th>
             <th>Order ID</th>
-            <th>Product</th>
-            <th>Quantity</th>
-            <th>Unit Price</th>
-            <th>Total Price</th>
+            <th>Product Details</th> {# This column will now contain nested item info #}
+            <th>Order Total</th>
             <th>Order Date</th>
             <th>Expected Delivery</th>
             <th>Status</th>
             <th>Customer</th>
+            <th>Actions</th> {# For View Details button etc #}
           </tr>
         </thead>
         <tbody>
@@ -42,23 +41,37 @@
           <tr>
             <td><input type="checkbox" class="order-checkbox" data-id="{{ order.order_id }}"></td>
             <td>{{ order.order_id }}</td>
-            <td>{{ order.product.name }}</td>
-            <td>{{ order.quantity }}</td>
-            <td>{{ order.unit_price }}</td>
-            <td>{{ order.total_price }}</td>
-            <td>{{ order.order_date|date:"Y-m-d\TH:i" }}</td>  {# ISO 8601 for datetime-local #}
-            <td>{{ order.expected_delivery|default:"" }}</td>
+            <td>
+                {# NESTED LOOP TO DISPLAY EACH ITEM IN THE ORDER #}
+                <ul class="list-unstyled mb-0 small"> {# Added list-unstyled and small for better formatting #}
+                    {% for item in order.items.all %}
+                        <li>
+                            <strong>{{ item.product_variant.product.name }}</strong>
+                            {% if item.product_variant.size %}({{ item.product_variant.size }}){% endif %}
+                            {% if item.product_variant.color %}({{ item.product_variant.color }}){% endif %}<br>
+                            Qty: {{ item.quantity }} @ ₱{{ item.price_at_order|floatformat:2 }} = ₱{{ item.item_total|floatformat:2 }}
+                        </li>
+                    {% empty %}
+                        <li>No items found for this order.</li>
+                    {% endfor %}
+                </ul>
+            </td>
+            <td>₱{{ order.get_total_cost|floatformat:2 }}</td> {# Total for the entire order #}
+            <td>{{ order.order_date|date:"Y-m-d\TH:i" }}</td> 
+            <td>{{ order.expected_delivery_date|default:"" }}</td> {# Corrected field name #}
             <td>{{ order.status }}</td>
             <td>{{ order.customer.username|default:"—" }}</td>
+            <td>
+                <a href="{% url 'orders:order_confirmation' order.id %}" class="btn btn-sm btn-info">View</a>
+            </td>
           </tr>
           {% empty %}
-          <tr><td colspan="10">No orders found.</td></tr>
+          <tr><td colspan="9">No orders found.</td></tr> {# Adjusted colspan #}
           {% endfor %}
         </tbody>
       </table>
     </div>
 
-    <!-- Modal -->
     <div id="formModal" class="modal hidden">
       <div class="modal-content">
         <span class="close-btn" onclick="closeModal()">&times;</span>
@@ -97,11 +110,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
   window.closeModal = function() {
     document.getElementById('formModal').classList.add('hidden');
-    document.getElementById('hidden-order-id').value = '';  // clear hidden order_id on close
+    document.getElementById('hidden-order-id').value = ''; 
     document.querySelector('.submit-btn').textContent = 'Save';
     document.getElementById('order-form').reset();
   };
-
 
   window.populateFormForUpdate = function() {
     const sel = document.querySelectorAll('.order-checkbox:checked');
@@ -110,46 +122,46 @@ document.addEventListener('DOMContentLoaded', function() {
     const row = sel[0].closest('tr');
     const cells = row.children;
 
-    const expectedDeliveryText = cells[7].textContent.trim();
+    // IMPORTANT: The 'product', 'quantity', 'unit_price' fields are on OrderItem, not Order.
+    // This JS logic will NOT work for updating individual items within an order from this table.
+    // It's only suitable for updating order-level fields like status, delivery date.
+    // If you need to update individual items, you'd need a much more complex modal/form
+    // that fetches and displays all OrderItems for the selected order.
+    // For now, these lines below are removed as they will cause errors trying to read data from the list
+    // that doesn't exist anymore as single columns.
+    
+    // Adjusted cell indices due to new column structure
+    // Order ID is cells[1]
+    // Product Details is cells[2]
+    // Order Total is cells[3]
+    // Order Date is cells[4]
+    // Expected Delivery is cells[5]
+    // Status is cells[6]
+    // Customer is cells[7]
+    // Actions is cells[8]
+
+    const expectedDeliveryText = cells[5].textContent.trim(); // Now cell index 5
     const expected_delivery = expectedDeliveryText === '' ? '' : expectedDeliveryText;
 
-    // Parse order_date to ISO format for datetime-local input
-    let orderDateRaw = cells[6].textContent.trim();
+    let orderDateRaw = cells[4].textContent.trim(); // Now cell index 4
     let order_date = '';
     if(orderDateRaw){
-      // If orderDateRaw is "YYYY-MM-DD HH:MM", convert to "YYYY-MM-DDTHH:MM"
       order_date = orderDateRaw.replace(' ', 'T');
     }
 
     const order = {
       order_id: cells[1].textContent.trim(),
-      product: cells[2].textContent.trim(),
-      quantity: cells[3].textContent.trim(),
-      unit_price: cells[4].textContent.trim(),
       expected_delivery: expected_delivery,
-      status: cells[8].textContent.trim(),
+      status: cells[6].textContent.trim(), // Now cell index 6
       order_date: order_date
     };
 
     document.getElementById('hidden-order-id').value = order.order_id;
-
-    // Set product select option based on visible name
-    const productSelect = document.getElementById('id_product');
-    for(let opt of productSelect.options){
-      if(opt.text.trim() === order.product){
-        productSelect.value = opt.value;
-        break;
-      }
-    }
-
-    document.getElementById('id_quantity').value = order.quantity;
-    document.getElementById('id_unit_price').value = order.unit_price;
-    document.getElementById('id_expected_delivery').value = order.expected_delivery;
-    document.getElementById('id_status').value = order.status;
-
-    if(document.getElementById('id_order_date')){
-      document.getElementById('id_order_date').value = order.order_date;
-    }
+    
+    // Set order-level fields in the form
+    if (document.getElementById('id_expected_delivery')) document.getElementById('id_expected_delivery').value = order.expected_delivery;
+    if (document.getElementById('id_status')) document.getElementById('id_status').value = order.status;
+    if (document.getElementById('id_order_date')) document.getElementById('id_order_date').value = order.order_date;
 
     document.querySelector('.submit-btn').textContent = 'Update Order';
     openModal();
@@ -158,7 +170,9 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelector('.search-input').addEventListener('input', function(e) {
     const kw = e.target.value.toLowerCase();
     document.querySelectorAll('.orders-table tbody tr').forEach(row => {
-      const text = Array.from(row.children).slice(1, 4)
+      // Adjusted slice to cover order_id, product details, order total, status, customer
+      // Search fields are based on actual content in cells: cells[1] Order ID, cells[2] Product Details, cells[3] Order Total, cells[6] Status, cells[7] Customer
+      const text = Array.from(row.children).slice(1, 8) // Adjust indices based on new columns
         .map(td => td.textContent.toLowerCase())
         .join(' ');
       row.style.display = text.includes(kw) ? '' : 'none';

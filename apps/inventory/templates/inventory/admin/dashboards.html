@@ -178,14 +178,20 @@
 <title>
 {% block title %}
     {% if request.user.role == 'admin' %}
-        Admin | Dashboard
-    {% elif request.user.role == 'manager' %}
-        Manager | Dashboard
-    {% elif request.user.role == 'staff' %}
-        Staff | Dashboard
-    {% else %}
-        Delivery | Dashboard
-    {% endif %}
+            Admin | Dashboard
+        {% elif request.user.role == 'manager' %}
+            Manager | Dashboard
+        {% elif request.user.role == 'staff' %}
+            Staff | Dashboard
+        {% elif request.user.role == 'customer' %}
+            Customer | Dashboard
+        {% elif request.user.role == 'supplier' %}
+            Supplier | Dashboard
+        {% elif request.user.role == 'delivery' %}
+            Delivery | Dashboard
+        {% else %}
+            empty
+        {% endif %}
 {% endblock %}
 </title>
 

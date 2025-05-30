@@ -1,12 +1,13 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Delivery
-from apps.orders.models import Order  # Import the Order model
+from apps.orders.models import Order, OrderItem # Make sure OrderItem is imported if you need to query it
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+
 
 # @staff_member_required
 # def delivery_list(request):
@@ -19,16 +20,31 @@ import json
 #     return render(request, 'delivery/delivery_list.html', context)
 
 def delivery_list(request):
-    deliveries = Delivery.objects.filter(is_archived=False,).select_related('order', 'order__product')
-    all_orders = Order.objects.all()
+    deliveries = Delivery.objects.filter(is_archived=False) \
+                                 .select_related('order', 'order__customer') \
+                                 .prefetch_related('order__items__product_variant__product')
+    # Explanation:
+    # .select_related('order'): Gets the related Order object in the same query.
+    # .select_related('order__customer'): Gets the related Customer (User) for that Order.
+    # .prefetch_related('order__items__product_variant__product'):
+    #   - 'order__items': Prefetches all OrderItems for each Order.
+    #   - '__product_variant': Then prefetches the ProductVariant for each OrderItem.
+    #   - '__product': And finally, prefetches the Product for each ProductVariant.
+    # This efficiently fetches all necessary data for rendering order items.
+
+    all_orders = Order.objects.all().select_related('customer') # Pre-fetch customer for order dropdown if needed
+    
     return render(request, 'delivery/delivery_list.html', {
         'deliveries': deliveries,
         'all_orders': all_orders,
     })
 
 def archive_list(request):
-    deliveries = Delivery.objects.filter(is_archived=True).select_related('order', 'order__product')
+    deliveries = Delivery.objects.filter(is_archived=True) \
+                                 .select_related('order', 'order__customer') \
+                                 .prefetch_related('order__items__product_variant__product')
     return render(request, 'delivery/archive_list.html', {'deliveries': deliveries})
+
 
 @csrf_exempt
 @require_POST
@@ -63,8 +79,12 @@ def add_delivery(request):
     if order_id and delivery_status:
         try:
             order = Order.objects.get(pk=order_id)
-            Delivery.objects.create(order=order, delivery_status=delivery_status)
-            messages.success(request, f"Delivery created for Order {order.order_id}.")
+            # You might want to prevent creating multiple deliveries for the same order
+            if Delivery.objects.filter(order=order).exists():
+                 messages.warning(request, f"Delivery already exists for Order {order.order_id}.")
+            else:
+                Delivery.objects.create(order=order, delivery_status=delivery_status)
+                messages.success(request, f"Delivery created for Order {order.order_id}.")
             return redirect('delivery:delivery_list')
         except Order.DoesNotExist:
             messages.error(request, "Invalid Order selected.")
@@ -83,3 +103,4 @@ def confirm_delivery(request, delivery_id):
     else:
         messages.info(request, f"Delivery for Order {delivery.order.order_id} was already confirmed.")
     return redirect('delivery:delivery_list')
+
