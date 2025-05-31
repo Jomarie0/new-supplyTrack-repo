@@ -27,7 +27,7 @@ python manage.py runserver
 ## Git Requirements
 1. Clone Project
 ```bash
-git clone https://github.com/lpeter29/E-Commerce-Website.git
+git clone https://github.com/Jomarie0/new-supplyTrack-repo.git
 ```
 
 2. Push Code
