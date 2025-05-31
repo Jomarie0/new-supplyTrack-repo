@@ -1,4 +1,5 @@
 {% extends "base_auth.html" %}
+{% load static %}
 {% block title %}Verify Reset Code{% endblock %}
 {% block content %}
 <div class="login-container">
@@ -28,4 +29,20 @@
         }
     }, 1000);
 </script>
+
+{% if messages %}
+<script id="django-messages-json" type="application/json">
+  [
+    {% for message in messages %}
+      {
+        "message": "{{ message|escapejs }}",
+        "tags": "{{ message.tags }}"
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+</script>
+{% endif %}
+<script src="{% static 'js/messages.js' %}"></script>
+
+
 {% endblock %}

@@ -1,9 +1,11 @@
 {% extends "base_store.html" %}
 {% load static %}
 
+
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block content %}
+    <link rel="stylesheet" href="{% static 'css/store/cart.css' %}">
     <div class="container cart-page">
         <h1>{{ page_title }}</h1>
 

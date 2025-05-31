@@ -117,10 +117,17 @@ def register_view(request):
                 request.session['verification_code'] = code
                 request.session.set_expiry(180)  # expires in 3 mins
                 send_verification_email(form.cleaned_data['email'], code)
+
+                messages.success(request, "📧 A verification code has been sent to your email.")
                 return redirect('users:verify_email')
+
+        # Convert form errors into messages for modal display
+        for field in form:
+            for error in field.errors:
+                messages.error(request, error)
     else:
         form = CustomUserCreationForm()
-    
+
     return render(request, "users/register.html", {"form": form})
 
 def verify_email_view(request):
@@ -133,9 +140,7 @@ def verify_email_view(request):
 
     if request.method == 'POST':
         input_code = request.POST.get('code')
-
         if input_code == code:
-            # Create and activate user
             user = User.objects.create_user(
                 username=temp_user_data['username'],
                 email=temp_user_data['email'],
@@ -144,11 +149,10 @@ def verify_email_view(request):
             user.is_active = True
             user.save()
 
-            # Clear session data
             del request.session['temp_user_data']
             del request.session['verification_code']
 
-            messages.success(request, "Email verified successfully!")
+            messages.success(request, "✅ Email verified successfully!")
             return redirect('users:login')
         else:
             messages.error(request, "Invalid or expired code.")
@@ -171,7 +175,7 @@ def resend_verification_code_view(request):
     request.session.set_expiry(180)
 
     send_verification_email(temp_user_data['email'], code)
-    messages.success(request, "A new verification code has been sent.")
+    messages.success(request, "📧 A new verification code has been sent to your email.")
     return redirect('users:verify_email')
 
 
@@ -191,21 +195,27 @@ def redirect_based_on_role(user):
 
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect_based_on_role(request.user)  
-    
+        return redirect_based_on_role(request.user)
+
     if request.method == "POST":
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            return redirect_based_on_role(user)
+            # messages.success(request, f"Welcome back, {user.username}!")  # ✅ Add this
+            redirect_url = redirect_based_on_role(user).url
+            messages.success(request, f"Welcome back, {user.username}!")
+            return render(request, "users/login.html", {
+                "form": AuthenticationForm(),
+                "redirect_after_login": redirect_url
+            })
         else:
-            messages.error(request, "Invalid username or password.")
-    
+            messages.error(request, "Invalid username or password.")  # already exists
     else:
         form = AuthenticationForm()
-    
+
     return render(request, "users/login.html", {"form": form})
+
 
 # Generate reset code and send to user's email
 def forgot_password_view(request):
@@ -218,10 +228,13 @@ def forgot_password_view(request):
             request.session['reset_email'] = email
             request.session.set_expiry(180)  # expires in 3 mins
             send_verification_email(email, code)
+
+            # ✅ SUCCESS MESSAGE ADDED HERE
+            messages.success(request, '📨 A verification code has been sent to your email.')
             return redirect('users:verify_reset_code')
         except User.DoesNotExist:
             messages.error(request, 'No account with this email was found.')
-    
+
     return render(request, 'users/forgot_password.html')
 
 # Code verification for reset

@@ -697,4 +697,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </script>
 
+{% if messages %}
+<script id="django-messages-json" type="application/json">
+  [
+    {% for message in messages %}
+      {
+        "message": "{{ message|escapejs }}",
+        "tags": "{{ message.tags }}"
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+</script>
+<script src="{% static 'js/messages.js' %}"></script>
+{% endif %}
+
 {% endblock %}

@@ -3,7 +3,7 @@
 {% block title %}Register{% endblock %}
 {% block content %}
 
-<style>
+<!-- <style>
     /* Error messages */
     .error-messages {
         color: blue;
@@ -44,9 +44,9 @@
         cursor: pointer;
         margin-top: 10px;
     }
-</style>
+</style> -->
 
-<div class="container">
+<!-- <div class="container">
     {% if messages %}
     <ul>
         {% for message in messages %}
@@ -62,7 +62,7 @@
                 {% endfor %}
             {% endfor %}
         </ul>
-    {% endif %}
+    {% endif %} -->
     <div class="login-container">
         <div>
             <h1>Create an Account</h1>
@@ -110,7 +110,7 @@
     
 
 <!-- Success Modal -->
-<div id="successModal" class="modal">
+<!-- <div id="successModal" class="modal">
     <div class="modal-content">
         <h3>Registration Successful!</h3>
         <p>You have successfully registered.</p>
@@ -118,15 +118,31 @@
             <button>Go to Login</button>
         </a>
     </div>
-</div>
+</div> -->
 
 <!-- JavaScript to Show Modal -->
-{% if success %}
+<!-- {% if success %}
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         document.getElementById("successModal").style.display = "block";
     });
 </script>
+{% endif %} -->
+
+
+{% if messages %}
+<script id="django-messages-json" type="application/json">
+  [
+    {% for message in messages %}
+      {
+        "message": "{{ message|escapejs }}",
+        "tags": "{{ message.tags }}"
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+</script>
 {% endif %}
+<script src="{% static 'js/messages.js' %}"></script>
+
 
 {% endblock %}

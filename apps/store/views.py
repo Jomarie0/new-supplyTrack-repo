@@ -10,8 +10,12 @@ from apps.inventory.models import Product
 from .models import Cart, CartItem, ProductVariant
 from django.contrib.auth.decorators import login_required
 from django.db import transaction # For atomic operations
+from django.contrib.messages import get_messages
 
 def product_list_view(request):
+    # storage = get_messages(request)
+    # for msg in storage:
+    #     print("DEBUG Message:", msg)
     """
     Displays a list of all active products.
     """
@@ -99,22 +103,19 @@ def add_to_cart_view(request, product_id):
 
         if product.stock_quantity < quantity:
             messages.error(request, f"Not enough stock for {product.name}. Available: {product.stock_quantity}.")
-            return redirect(request.META.get('HTTP_REFERER', 'store:product_list')) # Use product_list or store_view consistently
+            return redirect(request.META.get('HTTP_REFERER', 'store:product_list'))
 
+        # Get or create variant
         try:
-            # Try to get an existing variant for the product (e.g., if there's only one, or a "default" one)
             product_variant = ProductVariant.objects.get(product=product)
         except ProductVariant.DoesNotExist:
-            # If no variant exists, create a basic one for the product
-            # Now, 'price' is a real field, so you can assign to it.
             product_variant = ProductVariant.objects.create(
                 product=product,
                 sku=f"{product.product_id}-DEF",
-                price=product.price # Assign to the actual price field
+                price=product.price
             )
             messages.warning(request, f"Default variant created for {product.name}.")
         except ProductVariant.MultipleObjectsReturned:
-            # If multiple variants exist and none is explicitly selected, pick the first active one
             product_variant = ProductVariant.objects.filter(product=product, is_active=True).first()
             if not product_variant:
                 messages.error(request, f"No active variant found for {product.name}.")
@@ -122,19 +123,31 @@ def add_to_cart_view(request, product_id):
 
         cart = get_or_create_cart(request)
 
-        try:
-            cart_item = CartItem.objects.get(cart=cart, product_variant=product_variant)
-            cart_item.quantity += quantity
-            cart_item.save()
+        # Check existing quantity in cart
+        existing_item = CartItem.objects.filter(cart=cart, product_variant=product_variant).first()
+        existing_quantity = existing_item.quantity if existing_item else 0
+
+        # Prevent adding more than stock
+        if existing_quantity + quantity > product.stock_quantity:
+            messages.error(
+                request,
+                f"You already have {existing_quantity} in your cart. Only {product.stock_quantity} {product.name} available in stock."
+            )
+            return redirect(request.META.get('HTTP_REFERER', 'store:product_list'))
+
+        # Proceed with adding or updating
+        if existing_item:
+            existing_item.quantity += quantity
+            existing_item.save()
             messages.success(request, f"Added {quantity} more of {product.name} to your cart.")
-        except CartItem.DoesNotExist:
+        else:
             CartItem.objects.create(cart=cart, product_variant=product_variant, quantity=quantity)
             messages.success(request, f"Added {quantity} {product.name} to your cart.")
 
-        return redirect(request.META.get('HTTP_REFERER', 'store:product_list')) # Use product_list or store_view consistently
-    
+        return redirect('store:product_list')
+
     messages.error(request, "Invalid request to add item to cart.")
-    return redirect('store:product_list') # Use product_list or store_view consistently
+    return redirect('store:product_list')
 
 
 def cart_view(request):

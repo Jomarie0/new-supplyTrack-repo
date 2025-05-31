@@ -13,17 +13,14 @@
 </form>
 
 <p id="countdown"></p>
+
+<!-- Resend Code (hidden by default) -->
 <form method="post" action="{% url 'users:resend_code' %}" id="resend-form" style="display:none;">
     {% csrf_token %}
     <button type="submit">Resend Code</button>
 </form>
 
-{% if messages %}
-  {% for message in messages %}
-    <p>{{ message }}</p>
-  {% endfor %}
-{% endif %}
-
+<!-- JS for Countdown and Resend Button -->
 <script>
   const expiration = {{ expiration_timestamp }};
   const countdownElem = document.getElementById("countdown");
@@ -44,7 +41,22 @@
       }
   }
 
-  updateCountdown();  // run immediately
-  const x = setInterval(updateCountdown, 1000);  // update every second
+  updateCountdown();  // run once immediately
+  const x = setInterval(updateCountdown, 1000);  // then every second
 </script>
+
+<!-- ✅ Toast message handler -->
+{% if messages %}
+<script id="django-messages-json" type="application/json">
+  [
+    {% for message in messages %}
+      {
+        "message": "{{ message|escapejs }}",
+        "tags": "{{ message.tags }}"
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+</script>
+<script src="{% static 'js/messages.js' %}"></script>
+{% endif %}
 {% endblock %}

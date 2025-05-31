@@ -1,4 +1,5 @@
 {% load static %}
+<link rel="stylesheet" href="{% static 'css/base/base_store/base_store.css' %}">
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,23 +21,17 @@
             {# ADD THIS CART LINK #}
             <li>
                 <a href="{% url 'store:cart_view' %}">
-                    Cart 
-                    {% if request.user.is_authenticated and request.user.cart.items.count > 0 %}
-                        ({{ request.user.cart.items.count }})
-                    {% elif not request.user.is_authenticated %}
-                        {# For anonymous users, you'd need to fetch cart count via context processor or AJAX #}
-                        {# For now, just show 'Cart' #}
-                        (<span id="anon-cart-count">0</span>) {# This would require JS to update #}
-                    {% endif %}
+                    Cart ({{ cart_item_count }})
                 </a>
             </li>
 
+
             {# ... login/logout links ... #}
             {% if request.user.is_authenticated == False %}
-                <li><a href="{% url 'users:login' %}" class="menu-item">login</a></li>
+                <li><a href="{% url 'users:login' %}" class="menu-item">Login</a></li>
             {% endif %}
             {% if request.user.is_authenticated == True %}
-                <li><a href="{% url 'users:logout_view' %}" class="menu-item">logout</a></li>
+                <li><a href="{% url 'users:logout_view' %}" class="menu-item">Logout</a></li>
             {% endif %}
 
         </ul>
@@ -48,4 +43,18 @@
     {% endblock %}
     </div>
 </body>
+{% if messages %}
+<script id="django-messages-json" type="application/json">
+  [
+    {% for message in messages %}
+      {
+        "message": "{{ message|escapejs }}",
+        "tags": "{{ message.tags }}"
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+</script>
+{% endif %}
+<script src="{% static 'js/messages.js' %}"></script>
+
 </html>

@@ -1,8 +1,10 @@
 {% extends "base_store.html" %} {# Ensure this path is correct #}
 {% load static %}
+
 {% block title %}{{ product.name }} - Product Detail{% endblock %} {# Sets the page title dynamically #}
 
 {% block content %}
+    <link rel="stylesheet" href="{% static 'css/store/store_detail_view.css' %}">
     <div class="container product-detail-page">
         <a href="{% url 'store:product_list' %}" class="back-link">← Back to All Products</a>
 
@@ -39,7 +41,7 @@
                         <p class="in-stock">
                             Availability: In Stock ({{ product.stock_quantity }} {{ product.unit }})
                         </p>
-                        <button class="btn btn-primary add-to-cart-btn">Add to Cart</button> {# Placeholder for future cart functionality #}
+                        <!-- <button class="btn btn-primary add-to-cart-btn">Add to Cart</button> {# Placeholder for future cart functionality #} -->
                     {% else %}
                         <p class="out-of-stock">
                             Availability: Out of Stock
@@ -64,23 +66,24 @@
             </div>
         </div>
         <div class="product-availability">
-    {% if product.stock_quantity > 0 %}
-        <p class="in-stock">
-            Availability: In Stock ({{ product.stock_quantity }} {{ product.unit }})
-        </p>
-        <form action="{% url 'store:add_to_cart' product_id=product.id %}" method="post">
-            {% csrf_token %}
-            <label for="quantity">Quantity:</label>
-            <input type="number" id="quantity" name="quantity" value="1" min="1" max="{{ product.stock_quantity }}">
-            <button type="submit" class="btn btn-primary add-to-cart-btn">Add to Cart</button>
-        </form>
-    {% else %}
-        <p class="out-of-stock">
-            Availability: Out of Stock
-        </p>
-        <button class="btn btn-secondary add-to-cart-btn" disabled>Out of Stock</button>
-    {% endif %}
-</div>
+            {% if product.stock_quantity > 0 %}
+                <p class="in-stock">
+                    Availability: In Stock ({{ product.stock_quantity }} {{ product.unit }})
+                </p>
+                <form action="{% url 'store:add_to_cart' product_id=product.id %}" method="post">
+                    {% csrf_token %}
+                    <label for="quantity">Quantity:</label>
+                    <input type="number" id="quantity" name="quantity" value="1" min="1" max="{{ product.stock_quantity }}">
+                    <button type="submit" class="btn btn-primary add-to-cart-btn">Add to Cart</button>
+                </form>
+            {% else %}
+                <p class="out-of-stock">
+                    Availability: Out of Stock
+                </p>
+                <button class="btn btn-secondary add-to-cart-btn" disabled>Out of Stock</button>
+            {% endif %}
+        </div>
 
     </div>
+
 {% endblock %}
