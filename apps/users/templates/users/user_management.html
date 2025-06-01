@@ -317,7 +317,8 @@ input[type="checkbox"] {
         <ul class="tab-nav">
             <li><button class="tab-button active" data-tab="admins">Admins ({{ admins.count }})</button></li>
             <li><button class="tab-button" data-tab="managers">Managers ({{ managers.count }})</button></li>
-            <li><button class="tab-button" data-tab="staffs">Staff ({{ staffs.count }})</button></li>
+            <li><button class="tab-button" data-tab="staffs">Staffs ({{ staffs.count }})</button></li>
+            <li><button class="tab-button" data-tab="customers">Customers ({{ customers.count }})</button></li>
             <li><button class="tab-button" data-tab="suppliers">Suppliers ({{ suppliers.count }})</button></li>
             <li><button class="tab-button" data-tab="deliverys">Delivery ({{ deliverys.count }})</button></li>
         </ul>
@@ -468,6 +469,40 @@ input[type="checkbox"] {
             </table>
         </div>
     </div>
+    <div id="customers" class="tab-content">
+        <div class="table-container">
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="select-all" data-table="managers"></th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in customers %}
+                    <tr>
+                        <td><input type="checkbox" class="user-checkbox" data-id="{{ user.id }}"></td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm edit-user-btn" 
+                                    data-user-id="{{ user.id }}" 
+                                    data-username="{{ user.username }}" 
+                                    data-email="{{ user.email }}" 
+                                    data-role="{{ user.role }}">
+                                Edit
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="empty-state">No manager users found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
     <div id="deliverys" class="tab-content">
         <div class="table-container">
@@ -535,8 +570,11 @@ input[type="checkbox"] {
                         <option value="admin">Admin</option>
                         <option value="manager">Manager</option>
                         <option value="staff">Staff</option>
-                        <option value="supplier">Supplier</option>
                         <option value="delivery">Delivery</option>
+                        <option value="supplier">Supplier</option>
+                        <option value="customer">Customers</option>
+                        
+                        
                     </select>
                 </div>
             </div>

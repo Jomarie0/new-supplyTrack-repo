@@ -83,6 +83,7 @@ def send_delivery_status_update_email(delivery):
 #     return render(request, 'delivery/delivery_list.html', context)
 
 def delivery_list(request):
+    
     deliveries_queryset = Delivery.objects.filter(is_archived=False) \
                                  .select_related('order__customer') \
                                  .prefetch_related(
@@ -90,6 +91,8 @@ def delivery_list(request):
                                      Prefetch('order__items', queryset=OrderItem.objects.select_related('product_variant__product'))
                                  ) \
                                  .order_by('-delivered_at') # Or '-order__order_date'
+    # if request.user.filter(name='Delivery').exists():
+    #     deliveries_queryset = deliveries_queryset.filter(order__assigned_to=request.user)
 
     # Serialize the deliveries queryset to JSON
     # We need to manually construct the data because serialize('json') doesn't handle related objects
@@ -123,7 +126,7 @@ def delivery_list(request):
                     'id': delivery.order.customer.id,
                     'username': delivery.order.customer.username,
                 } if delivery.order.customer else None,
-                'total_cost': float(delivery.order.get_total_cost()), # Ensure this is a float
+                'total_cost': float(delivery.order.get_total_cost), # Ensure this is a float
                 'items': items_data,
             }
 
