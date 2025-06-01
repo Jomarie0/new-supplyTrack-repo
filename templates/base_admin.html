@@ -1,0 +1,257 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <title>
+    {% block title %}
+        {% if request.user.role == 'admin' %}
+            Admin | Panel
+        {% elif request.user.role == 'manager' %}
+            Manager | Panel
+        {% elif request.user.role == 'staff' %}
+            Staff | Panel
+        {% elif request.user.role == 'customer' %}
+            Customer | Panel
+        {% elif request.user.role == 'supplier' %}
+            Supplier | Panel
+        {% elif request.user.role == 'delivery' %}
+            Delivery | Panel
+        {% else %}
+            empty
+        {% endif %}
+    {% endblock %}
+    </title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/base/base_admin/base_admin.css' %}">
+    {% block styles %}{% endblock %}
+</head>
+
+<body>
+    <!-- Sidebar Toggle Button -->
+    <button class="btn-toggle" onclick="toggleSidebar()">☰</button>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+        <nav class="sidebar-nav">
+            <ul class="menu">
+            {% if request.user.role == 'admin' %}
+                <li><a href="{% url 'inventory:dashboard' %}" class="menu-item">Dashboard</a></li>
+                <li><a href="{% url 'inventory:inventory_list' %}" class="menu-item">Inventory</a></li>
+                <li class="dropdown">
+                    <button class="dropdown-toggle" onclick="toggleDropdown()" id="orderToggleBtn">
+                        Order <span class="dropdown-icon" id="orderArrow">▼</span>
+                    </button>
+
+
+                    <ul id="orderDropdown" class="dropdown-menu {% if request.resolver_match.url_name == 'order_list' or request.resolver_match.url_name == 'purchase_order_list' %}open{% else %}hidden{% endif %}">
+                        <li>
+                        <a href="{% url 'orders:order_list' %}" class="submenu-item {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}">
+                            Customer Orders
+                        </a>
+                        </li>
+                        <li>
+                        <a href="{% url 'PO:purchase_order_list' %}" class="submenu-item {% if request.resolver_match.url_name == 'purchase_order_list' %}active{% endif %}">
+                            Purchase Orders
+                        </a>
+                        </li>
+                    </ul>
+                </li>
+
+
+
+                <li><a href="{% url 'users:user_management' %}" class="menu-item">Users</a></li>
+                <li>
+                    <a href="{% url 'inventory:restock_notifications_view' %}" class="menu-item relative inline-flex items-center">
+                        Notifications
+                        <span id="notif-badge" class="ml-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full" style="display: none;">0</span>
+                    </a>
+                </li>
+                <li><a href="{% url 'delivery:delivery_list' %}" class="menu-item">Delivery</a></li>
+                
+            {% elif request.user.role == 'manager' %}
+                <li><a href="{% url 'inventory:dashboard' %}" class="menu-item">Dashboard</a></li>
+                <li><a href="{% url 'inventory:inventory_list' %}" class="menu-item">Inventory</a></li>
+                <li class="dropdown">
+                    <button class="dropdown-toggle" onclick="toggleDropdown()" id="orderToggleBtn">
+                        Order <span class="dropdown-icon" id="orderArrow">▼</span>
+                    </button>
+
+
+                    <ul id="orderDropdown" class="dropdown-menu {% if request.resolver_match.url_name == 'order_list' or request.resolver_match.url_name == 'purchase_order_list' %}open{% else %}hidden{% endif %}">
+                        <li>
+                        <a href="{% url 'orders:order_list' %}" class="submenu-item {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}">
+                            Customer Orders
+                        </a>
+                        </li>
+                        <li>
+                        <a href="{% url 'PO:purchase_order_list' %}" class="submenu-item {% if request.resolver_match.url_name == 'purchase_order_list' %}active{% endif %}">
+                            Purchase Orders
+                        </a>
+                        </li>
+                    </ul>
+                </li>
+                <li><a href="{% url 'delivery:delivery_list' %}" class="menu-item">Delivery</a></li>
+
+            {% elif request.user.role == 'supplier'  %}
+                <li><a href="{% url 'suppliers:supplier_order_list' %}" class="menu-item">Order Requests</a></li>
+
+            {% elif request.user.role == 'delivery'  %}
+                <li><a href="{% url 'delivery:delivery_list' %}" class="menu-item">Delivery</a></li>
+
+            {% elif request.user.role in 'staff customer' %}
+                <li><a href="{% url 'inventory:dashboard' %}" class="menu-item">Dashboard</a></li>
+                <li><a href="{% url 'inventory:inventory_list' %}" class="menu-item">Inventory</a></li>
+                <li><a href="{% url 'orders:order_list' %}" class="menu-item">Customer Orders</a></li>
+                <li><a href="{% url 'delivery:delivery_list' %}" class="menu-item">Delivery</a></li>
+            
+            
+
+            {% endif %}
+                <li><a href="{% url 'users:logout_view' %}" class="menu-item">Logout</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
+
+    <!-- TOAST TEMPLATE -->
+    <template id="toast-template">
+        <div class="toast align-items-center text-bg-success border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body toast-message"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </template>
+
+    <!-- TOAST DISPLAY SCRIPT -->
+    <script>
+        function showToast(message, type = "success") {
+        const container = document.getElementById("toast-container");
+        const template = document.getElementById("toast-template");
+        const clone = template.content.cloneNode(true);
+        const toast = clone.querySelector(".toast");
+        const msgEl = clone.querySelector(".toast-message");
+
+        toast.classList.remove("text-bg-success", "text-bg-danger", "text-bg-warning");
+        toast.classList.add(`text-bg-${type}`);
+        msgEl.textContent = message;
+
+        container.appendChild(clone);
+
+        const bsToast = new bootstrap.Toast(container.lastElementChild, {
+            delay: 5000,
+            autohide: true
+        });
+        bsToast.show();
+
+        container.lastElementChild.addEventListener("hidden.bs.toast", function () {
+            this.remove();
+        });
+    }
+
+        // DI KO SURE KUNG MAY MAAPEKTUHAN KAPAG TINANGGAL KO ITO
+        document.addEventListener("DOMContentLoaded", function () {
+            {% if messages %}
+                {% for message in messages %}
+                    showToast("{{ message|escapejs }}", "{{ message.tags }}");
+                {% endfor %}
+            {% endif %}
+        });
+
+        // Sidebar Dropdown Logic
+        document.addEventListener("DOMContentLoaded", function () {
+            const dropdownMenu = document.getElementById('orderDropdown');
+            const toggleButton = document.getElementById('orderToggleBtn');
+            const arrowIcon = document.getElementById('orderArrow');
+
+            if (!dropdownMenu || !toggleButton || !arrowIcon) {
+                console.warn('Dropdown elements not found. Skipping dropdown setup.');
+                return;
+            }
+
+            let isDropdownOpen = dropdownMenu.classList.contains('open');
+            arrowIcon.classList.toggle('rotated', isDropdownOpen);
+
+            toggleButton.addEventListener('click', function (e) {
+                e.stopPropagation();
+                isDropdownOpen = !isDropdownOpen;
+
+                dropdownMenu.classList.toggle('open', isDropdownOpen);
+                dropdownMenu.classList.toggle('hidden', !isDropdownOpen);
+                arrowIcon.classList.toggle('rotated', isDropdownOpen);
+            });
+
+            document.addEventListener('click', function (e) {
+                const isClickInsideMenu = dropdownMenu.contains(e.target);
+                const isClickOnToggle = toggleButton.contains(e.target);
+                const isClickOnSubmenuItem = e.target.classList.contains('submenu-item') || e.target.closest('.submenu-item');
+
+                // Get current URL path
+                const currentPath = window.location.pathname;
+
+                // Define paths where dropdown should stay open regardless of clicks
+                const keepOpenPaths = [
+                    '/orders/',             // example purchase order URL root
+                    '/purchase_orders/',    // adjust as your real paths
+                    '/customer_orders/',    // adjust as needed
+                    '/suppliers/orders/',   // add any other relevant paths
+                ];
+
+                // Check if current path starts with any of the keepOpenPaths
+                const onKeepOpenPath = keepOpenPaths.some(path => currentPath.startsWith(path));
+
+                // Only close dropdown if clicked outside AND NOT on the specified paths
+                if (!isClickInsideMenu && !isClickOnToggle && !isClickOnSubmenuItem && isDropdownOpen && !onKeepOpenPath) {
+                    dropdownMenu.classList.remove('open');
+                    dropdownMenu.classList.add('hidden');
+                    arrowIcon.classList.remove('rotated');
+                    isDropdownOpen = false;
+                }
+            });
+        });
+
+
+
+
+        // Restock Notification Fetch
+        document.addEventListener("DOMContentLoaded", function () {
+            fetch('/inventory/api/restock-notifications/')
+                .then(response => response.json())
+                .then(data => {
+                    const badge = document.getElementById('notif-badge');
+                    if (!badge) return;
+                    const count = Array.isArray(data) ? data.length : 0;
+                    badge.textContent = count;
+                    badge.style.display = count > 0 ? 'inline-flex' : 'none';
+                })
+                .catch(error => console.error('Error fetching notifications:', error));
+        });
+    </script>
+    <!-- BOOTSTRAP JS (No integrity or crossorigin) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+{% if messages %}
+<script id="django-messages-json" type="application/json">
+  [
+    {% for message in messages %}
+      {
+        "message": "{{ message|escapejs }}",
+        "tags": "{{ message.tags }}"
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+</script>
+<script src="{% static 'js/messages.js' %}"></script>
+{% endif %}
+
+</body>
+</html>

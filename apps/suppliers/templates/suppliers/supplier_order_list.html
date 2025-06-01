@@ -1,0 +1,70 @@
+{% extends 'base_admin.html' %}
+
+{% block content %}
+<h1>Purchase Orders for {{ supplier.name }}</h1>
+
+<!-- Filter Tabs -->
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item">
+    <a class="nav-link {% if status_filter == 'all' %}active{% endif %}" href="?status=all">All</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if status_filter == 'pending' %}active{% endif %}" href="?status=pending">Pending</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if status_filter == 'accepted' %}active{% endif %}" href="?status=accepted">Accepted</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if status_filter == 'cancelled' %}active{% endif %}" href="?status=cancelled">Cancelled</a>
+  </li>
+</ul>
+
+{% if purchase_orders %}
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Purchase Order ID</th>
+            <th>Order Date</th>
+            <th>Expected Delivery</th>
+            <th>Notes (Products & Quantity)</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for po in purchase_orders %}
+        <tr>
+            <td>{{ po.purchase_order_id }}</td>
+            <td>{{ po.order_date|date:"Y-m-d H:i" }}</td>
+            <td>{{ po.expected_delivery_date|default:"—" }}</td>
+            <td><pre>{{ po.notes }}</pre></td>
+            <td>{{ po.get_status_display }}</td>
+            <td>
+                {% if po.status == po.STATUS_PENDING %}
+                    <!-- Accept/Cancel buttons -->
+                    <form method="POST" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="purchase_order_id" value="{{ po.purchase_order_id }}">
+                        <button type="submit" name="action" value="accept" class="btn btn-success btn-sm">Accept</button>
+                    </form>
+                    <form method="POST" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="purchase_order_id" value="{{ po.purchase_order_id }}">
+                        <button type="submit" name="action" value="cancel" class="btn btn-danger btn-sm">Cancel</button>
+                    </form>
+                {% elif po.status == po.STATUS_ORDERED %}
+                    <!-- Show View Order button -->
+                    <a href="{% url 'suppliers:view_order' po.purchase_order_id %}" class="btn btn-primary btn-sm">View Order</a>
+                {% else %}
+                    <em>No actions available</em>
+                {% endif %}
+            </td>
+
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No purchase orders found for this category.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,175 @@
+{% extends 'base_admin.html' %}
+{% load static %}
+
+{% block content %}
+    {% block styles %}
+        <link rel="stylesheet" href="{% static 'css/inventory/notifications.css' %}">
+        <style>
+            .notification-item {
+                border: 1px solid #ddd;
+                padding: 10px;
+                margin: 5px 0;
+                border-radius: 5px;
+                position: relative;
+            }
+            .delete-btn {
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                background: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 3px;
+                padding: 3px 8px;
+                cursor: pointer;
+                font-size: 12px;
+            }
+            .delete-btn:hover {
+                background: #c82333;
+            }
+            .notification-actions {
+                margin: 10px 0;
+            }
+            .btn-group {
+                display: inline-block;
+                margin-right: 10px;
+            }
+        </style>
+    {% endblock %}
+
+<h2>Restock Notifications</h2>
+
+<div class="notification-actions">
+    <div class="btn-group">
+        <button id="select-all-btn" class="btn btn-sm btn-secondary">Select All</button>
+        <button id="delete-selected-btn" class="btn btn-sm btn-danger">Delete Selected</button>
+    </div>
+    <div class="btn-group">
+        <button id="refresh-btn" class="btn btn-sm btn-primary">Refresh</button>
+        <a href="{% url 'inventory:deleted_notifications_view' %}" class="btn btn-sm btn-info">View Deleted</a>
+    </div>
+</div>
+
+<div id="restock-logs">
+    <p>Active notifications: <span id="logs-count">{{ logs|length }}</span></p>
+    <div id="logs-list">
+        {% if logs %}
+            {% for log in logs %}
+                <div class="notification-item" data-id="{{ log.id }}">
+                    <input type="checkbox" class="notification-checkbox" value="{{ log.id }}">
+                    <button class="delete-btn" onclick="deleteNotification('{{ log.id }}')">×</button>
+                    <strong>Product:</strong> {{ log.product.name }}<br>
+                    <strong>Forecasted Quantity:</strong> {{ log.forecasted_quantity }}<br>
+                    <strong>Current Stock:</strong> {{ log.current_stock }}<br>
+                    <strong>Checked at:</strong> {{ log.checked_at|date:"M d, Y H:i" }}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No active restock notifications.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+$(document).ready(function(){
+    // Auto-refresh every 30 seconds
+    setInterval(updateRestockDisplay, 30000);
+    
+    // Select all functionality
+    $('#select-all-btn').click(function() {
+        $('.notification-checkbox').prop('checked', true);
+    });
+    
+    // Delete selected functionality
+    $('#delete-selected-btn').click(function() {
+        const selectedIds = [];
+        $('.notification-checkbox:checked').each(function() {
+            selectedIds.push($(this).val());
+        });
+        
+        if (selectedIds.length > 0) {
+            if (confirm(`Delete ${selectedIds.length} selected notifications?`)) {
+                deleteMultipleNotifications(selectedIds);
+            }
+        } else {
+            alert('Please select notifications to delete.');
+        }
+    });
+    
+    // Manual refresh
+    $('#refresh-btn').click(function() {
+        updateRestockDisplay();
+    });
+});
+
+function updateRestockDisplay() {
+    fetch('/inventory/api/restock-notifications/')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Updating notifications:', data.length);
+            
+            // Update count
+            document.getElementById('logs-count').textContent = data.length;
+            
+            // Update list
+            let logsList = document.getElementById('logs-list');
+            if (data.length > 0) {
+                let html = '';
+                data.forEach(log => {
+                    html += `
+                        <div class="notification-item" data-id="${log.id}">
+                            <input type="checkbox" class="notification-checkbox" value="${log.id}">
+                            <button class="delete-btn" onclick="deleteNotification(${log.id})">×</button>
+                            <strong>Product:</strong> ${log.product_name}<br>
+                            <strong>Forecasted Quantity:</strong> ${log.forecasted_quantity}<br>
+                            <strong>Current Stock:</strong> ${log.current_stock}<br>
+                            <strong>Checked at:</strong> ${log.checked_at}
+                        </div>
+                    `;
+                });
+                logsList.innerHTML = html;
+            } else {
+                logsList.innerHTML = '<p>No active restock notifications.</p>';
+            }
+        })
+        .catch(err => console.error('Error updating notifications:', err));
+}
+
+function deleteNotification(id) {
+    if (confirm('Delete this notification?')) {
+        fetch('/inventory/api/delete-notifications/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ids: [id]})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                updateRestockDisplay();
+            }
+        })
+        .catch(err => console.error('Error deleting notification:', err));
+    }
+}
+
+function deleteMultipleNotifications(ids) {
+    fetch('/inventory/api/delete-notifications/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ids: ids})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            updateRestockDisplay();
+            alert(`${data.deleted_count} notifications deleted.`);
+        }
+    })
+    .catch(err => console.error('Error deleting notifications:', err));
+}
+</script>
+{% endblock %}

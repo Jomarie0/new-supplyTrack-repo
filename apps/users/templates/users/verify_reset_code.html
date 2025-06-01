@@ -1,0 +1,48 @@
+{% extends "base_auth.html" %}
+{% load static %}
+{% block title %}Verify Reset Code{% endblock %}
+{% block content %}
+<div class="login-container">
+    <h2>Enter Verification Code</h2>
+    <p>Please check your email for the code.</p>
+    <form method="post">
+        {% csrf_token %}
+        <input type="text" name="code" placeholder="Enter 6-digit code" required>
+        <button type="submit">Verify</button>
+    </form>
+    <p id="countdown"></p>
+    <a href="{% url 'users:resend_reset_code' %}">Resend Code</a>
+</div>
+<script>
+    const countdownElement = document.getElementById("countdown");
+    const expiration = {{ expiration_timestamp|safe }};
+    const interval = setInterval(() => {
+        const now = new Date().getTime();
+        const distance = expiration - now;
+        if (distance <= 0) {
+            clearInterval(interval);
+            countdownElement.innerText = "Code expired. Please resend.";
+        } else {
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            countdownElement.innerText = `Code expires in ${minutes}m ${seconds}s`;
+        }
+    }, 1000);
+</script>
+
+{% if messages %}
+<script id="django-messages-json" type="application/json">
+  [
+    {% for message in messages %}
+      {
+        "message": "{{ message|escapejs }}",
+        "tags": "{{ message.tags }}"
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+</script>
+{% endif %}
+<script src="{% static 'js/messages.js' %}"></script>
+
+
+{% endblock %}

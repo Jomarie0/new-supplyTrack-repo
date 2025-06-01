@@ -1,0 +1,564 @@
+{% extends 'base_admin.html' %}
+{% load static %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/delivery/delivery.css' %}">
+<style>
+    /* Basic styles for the tabbed interface */
+    .category-tabs {
+        margin-top: 20px;
+        display: flex;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #ddd;
+        gap: 10px; /* Space between buttons */
+    }
+
+    .category-tabs button {
+        background-color: #f0f0f0;
+        border: 1px solid #ddd;
+        padding: 10px 15px;
+        cursor: pointer;
+        font-weight: bold;
+        border-radius: 5px 5px 0 0;
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .category-tabs button.active {
+        background-color: #007bff; /* Primary color for active tab */
+        color: white;
+        border-color: #007bff;
+        border-bottom: none; /* Make active tab appear connected to content */
+    }
+
+    .category-tabs button:hover:not(.active) {
+        background-color: #e2e6ea;
+    }
+
+    .delivery-category-content {
+        display: none; /* Hidden by default */
+        padding: 15px 0;
+        border-top: 1px solid #eee; /* Separator if needed */
+    }
+
+    .delivery-category-content.active {
+        display: block; /* Show active content */
+    }
+
+    /* Optional: Adjust table-wrapper for category content */
+    .delivery-category-content .table-wrapper {
+        margin-top: 0; /* Remove top margin if it's already in the category div */
+    }
+
+    /* General table styling (if not already in delivery.css) */
+    .orders-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    .orders-table th, .orders-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+    .orders-table th {
+        background-color: #f2f2f2;
+    }
+    .orders-table tbody tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    .orders-table tbody tr:hover {
+        background-color: #f1f1f1;
+    }
+
+    /* Styling for messages */
+    .messages {
+        list-style: none;
+        padding: 10px;
+        margin: 15px 0;
+        border-radius: 5px;
+    }
+
+    .messages li {
+        padding: 8px 12px;
+        margin-bottom: 5px;
+        border-radius: 4px;
+        font-weight: bold;
+    }
+
+    .messages .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .messages .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .messages .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    .messages .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+    <h1 class="section-title">Delivery Management</h1>
+    {% if request.user.role == 'admin' %}
+
+    <button id="addDeliveryBtn" class="button">Add Delivery</button>
+    <button id="archiveSelectedBtn" class="button">Archive Selected</button>
+    <a href="{% url 'delivery:archive_list' %}" class="button">View Archive</a>
+    {% endif %}
+
+    <div id="addDeliveryModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Add New Delivery</h2>
+            <form id="addDeliveryForm" method="post" action="{% url 'delivery:add_delivery' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="order">Order:</label>
+                    <select id="order" name="order" required>
+                        <option value="" disabled selected>Select an Order</option>
+                        {% for order in all_orders %}
+                            <option value="{{ order.id }}">
+                                Order ID: {{ order.order_id }} - Customer: {{ order.customer.username|default:"N/A" }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="delivery_status">Delivery Status:</label>
+                    <select id="delivery_status" name="delivery_status" required>
+                        <option value="pending_dispatch" selected>Pending Dispatch</option>
+                        <option value="out_for_delivery">Out for Delivery</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+                <button type="submit" class="button">Save Delivery</button>
+            </form>
+        </div>
+    </div>
+    
+    {# --- Category Tabs --- #}
+    <div class="category-tabs">
+        <button class="tab-button active" data-status="all">All Deliveries</button>
+        <button class="tab-button" data-status="pending_dispatch">Pending Dispatch</button>
+        <button class="tab-button" data-status="out_for_delivery">Out for Delivery</button>
+        <button class="tab-button" data-status="delivered">Delivered</button>
+        <button class="tab-button" data-status="failed">Failed</button>
+    </div>
+
+    {# --- Delivery Category Content Containers --- #}
+    {# Each div will contain its own table, populated by JS #}
+    <div id="all" class="delivery-category-content active">
+        <h3>All Deliveries</h3>
+        <div class="table-wrapper">
+            <table class="orders-table" id="all-deliveries-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="select-all-checkbox" data-tab-id="all"></th>
+                        <th>Delivery ID</th>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Product Details</th>
+                        <th>Order Total</th>
+                        <th>Delivery Status</th>
+                        <th>Delivered At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Deliveries will be populated here by JavaScript #}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="pending_dispatch" class="delivery-category-content">
+        <h3>Pending Dispatch Deliveries</h3>
+        <div class="table-wrapper">
+            <table class="orders-table" id="pending_dispatch-deliveries-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="select-all-checkbox" data-tab-id="pending_dispatch"></th>
+                        <th>Delivery ID</th>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Product Details</th>
+                        <th>Order Total</th>
+                        <th>Delivery Status</th>
+                        <th>Delivered At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Deliveries will be populated here by JavaScript #}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="out_for_delivery" class="delivery-category-content">
+        <h3>Out for Delivery Deliveries</h3>
+        <div class="table-wrapper">
+            <table class="orders-table" id="out_for_delivery-deliveries-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="select-all-checkbox" data-tab-id="out_for_delivery"></th>
+                        <th>Delivery ID</th>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Product Details</th>
+                        <th>Order Total</th>
+                        <th>Delivery Status</th>
+                        <th>Delivered At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Deliveries will be populated here by JavaScript #}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="delivered" class="delivery-category-content">
+        <h3>Delivered Deliveries</h3>
+        <div class="table-wrapper">
+            <table class="orders-table" id="delivered-deliveries-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="select-all-checkbox" data-tab-id="delivered"></th>
+                        <th>Delivery ID</th>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Product Details</th>
+                        <th>Order Total</th>
+                        <th>Delivery Status</th>
+                        <th>Delivered At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Deliveries will be populated here by JavaScript #}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="failed" class="delivery-category-content">
+        <h3>Failed Deliveries</h3>
+        <div class="table-wrapper">
+            <table class="orders-table" id="failed-deliveries-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="select-all-checkbox" data-tab-id="failed"></th>
+                        <th>Delivery ID</th>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Product Details</th>
+                        <th>Order Total</th>
+                        <th>Delivery Status</th>
+                        <th>Delivered At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Deliveries will be populated here by JavaScript #}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addDeliveryBtn = document.getElementById('addDeliveryBtn');
+    const archiveSelectedBtn = document.getElementById('archiveSelectedBtn'); // Get the archive button
+    const addDeliveryModal = document.getElementById('addDeliveryModal');
+    const closeButton = document.querySelector('.close-button');
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const deliveryCategoryContents = document.querySelectorAll('.delivery-category-content');
+
+    // Store all deliveries data globally (fetched from the Django context)
+    // Make sure 'deliveries_json' is passed from the view correctly
+    const allDeliveriesData = JSON.parse('{{ deliveries_json|escapejs }}');
+
+    // --- Modal Functionality ---
+    addDeliveryBtn.addEventListener('click', function() {
+        addDeliveryModal.style.display = 'block';
+    });
+
+    closeButton.addEventListener('click', function() {
+        addDeliveryModal.style.display = 'none';
+        document.getElementById('addDeliveryForm').reset();
+    });
+
+    window.addEventListener('click', function(event) {
+        if (event.target == addDeliveryModal) {
+            addDeliveryModal.style.display = 'none';
+            document.getElementById('addDeliveryForm').reset();
+        }
+    });
+
+    // --- Tab Functionality ---
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Deactivate all tabs and hide all content
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            deliveryCategoryContents.forEach(content => content.classList.remove('active'));
+
+            // Activate clicked tab and show corresponding content
+            this.classList.add('active');
+            const targetStatus = this.dataset.status;
+            document.getElementById(targetStatus).classList.add('active');
+
+            // Render deliveries for the active tab
+            renderDeliveries(targetStatus);
+        });
+    });
+
+    // --- Helper to render deliveries into tables ---
+    function renderDeliveries(statusFilter) {
+        // Find the correct tbody for the current active tab based on its ID
+        const targetTbody = document.querySelector(`#${statusFilter}-deliveries-table tbody`);
+
+        // Clear the tbody before rendering new content
+        targetTbody.innerHTML = '';
+
+        const filteredDeliveries = statusFilter === 'all'
+            ? allDeliveriesData
+            : allDeliveriesData.filter(delivery => delivery.delivery_status === statusFilter);
+
+        if (filteredDeliveries.length === 0) {
+            targetTbody.innerHTML = `<tr><td colspan="9">No ${statusFilter.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase())} deliveries found.</td></tr>`;
+            return;
+        }
+
+        filteredDeliveries.forEach(delivery => {
+            let productDetailsHtml = '<ul class="list-unstyled mb-0 small">';
+            if (delivery.order && delivery.order.items && delivery.order.items.length > 0) {
+                delivery.order.items.forEach(item => {
+                    const productVariant = item.product_variant;
+                    const productName = productVariant.product ? productVariant.product.name : 'N/A';
+                    const size = productVariant.size ? `(${productVariant.size})` : '';
+                    const color = productVariant.color ? `(${productVariant.color})` : '';
+                    const itemTotal = (item.quantity * item.price_at_order).toFixed(2);
+                    productDetailsHtml += `
+                        <li>
+                            <strong>${productName}</strong> ${size} ${color}<br>
+                            Qty: ${item.quantity} @ ₱${item.price_at_order.toFixed(2)} = ₱${itemTotal}
+                        </li>
+                    `;
+                });
+            } else {
+                productDetailsHtml += `<li>No items found for this order.</li>`;
+            }
+            productDetailsHtml += '</ul>';
+
+            const deliveredAt = delivery.delivered_at ? new Date(delivery.delivered_at).toLocaleString() : 'N/A';
+            const orderTotal = delivery.order && delivery.order.total_cost != null ? `₱${delivery.order.total_cost.toFixed(2)}` : 'N/A';
+            const customerUsername = delivery.order && delivery.order.customer ? delivery.order.customer.username : '—';
+            const orderId = delivery.order ? delivery.order.order_id : 'N/A';
+
+            const row = `
+                <tr data-id="${delivery.id}">
+                    <td><input type="checkbox" class="delivery-checkbox" data-id="${delivery.id}"></td>
+                    <td>${delivery.id}</td>
+                    <td>${orderId}</td>
+                    <td>${customerUsername}</td>
+                    <td>${productDetailsHtml}</td>
+                    <td>${orderTotal}</td>
+                    <td>${delivery.delivery_status.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase())}
+                    <td>${deliveredAt}</td>
+                    <td>
+                        <select class="delivery-status-dropdown" data-delivery-id="${delivery.id}">
+                            <option value="pending_dispatch" ${delivery.delivery_status === 'pending_dispatch' ? 'selected' : ''}>Pending Dispatch</option>
+                            <option value="out_for_delivery" ${delivery.delivery_status === 'out_for_delivery' ? 'selected' : ''}>Out for Delivery</option>
+                            <option value="delivered" ${delivery.delivery_status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                            <option value="failed" ${delivery.delivery_status === 'failed' ? 'selected' : ''}>Failed</option>
+                        </select>
+                    </td>
+
+                </tr>
+            `;
+            targetTbody.innerHTML += row;
+        });
+
+        // Re-attach checkbox listeners after rendering
+        attachCheckboxListeners();
+        // Re-attach update status button listeners after rendering
+        attachUpdateStatusListeners();
+    }
+
+    // --- Checkbox and Archive Functionality (Updated to handle dynamic tables) ---
+    function attachCheckboxListeners() {
+        // IMPORTANT: Select checkboxes *only within the active tab's content*
+        const activeTabContent = document.querySelector('.delivery-category-content.active');
+        if (!activeTabContent) return; // No active tab content found
+
+        const allCheckboxes = activeTabContent.querySelectorAll('.delivery-checkbox');
+        const selectAllCheckbox = activeTabContent.querySelector('.select-all-checkbox');
+
+        if (selectAllCheckbox) {
+            // Remove previous listeners to prevent duplicates
+            selectAllCheckbox.removeEventListener('change', handleSelectAll);
+            // Add new listener
+            selectAllCheckbox.addEventListener('change', handleSelectAll);
+            // Ensure selectAllCheckbox state is correct when tab is switched
+            const areAllSelected = Array.from(allCheckboxes).every(cb => cb.checked);
+            selectAllCheckbox.checked = allCheckboxes.length > 0 && areAllSelected;
+        }
+
+        allCheckboxes.forEach(checkbox => {
+            // Remove previous listeners to prevent duplicates
+            checkbox.removeEventListener('change', handleIndividualCheckboxChange);
+            // Add new listener
+            checkbox.addEventListener('change', handleIndividualCheckboxChange);
+        });
+    }
+
+    function handleSelectAll() {
+        const currentSelectAll = this; // The select-all checkbox that was clicked
+        const currentCheckboxes = currentSelectAll.closest('.orders-table').querySelectorAll('.delivery-checkbox');
+        currentCheckboxes.forEach(checkbox => {
+            checkbox.checked = currentSelectAll.checked;
+        });
+    }
+
+    function handleIndividualCheckboxChange() {
+        const currentTable = this.closest('.orders-table');
+        const currentCheckboxes = currentTable.querySelectorAll('.delivery-checkbox');
+        const selectAllCheckbox = currentTable.querySelector('.select-all-checkbox');
+
+        if (!selectAllCheckbox) return; // No select-all checkbox for this table
+
+        const allChecked = Array.from(currentCheckboxes).every(cb => cb.checked);
+        selectAllCheckbox.checked = allChecked;
+    }
+
+    // --- Attach listeners for update status buttons dynamically ---
+    function attachUpdateStatusListeners() {
+        const statusDropdowns = document.querySelectorAll('.delivery-category-content.active .delivery-status-dropdown');
+        statusDropdowns.forEach(dropdown => {
+            // Remove previous listener if any to prevent duplicates
+            dropdown.removeEventListener('change', handleStatusChange);
+            dropdown.addEventListener('change', handleStatusChange);
+        });
+    }
+
+    function handleStatusChange(event) {
+        const deliveryId = event.target.dataset.deliveryId;
+        const newStatus = event.target.value;
+
+        const validStatuses = ['pending_dispatch', 'out_for_delivery', 'delivered', 'failed'];
+        if (!validStatuses.includes(newStatus)) {
+            alert("Invalid status selected.");
+            return;
+        }
+
+        fetch(`/delivery/update_status/${deliveryId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ status: newStatus })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert("Delivery status updated successfully!");
+                // Reload to reflect changes, or you can call renderDeliveries again
+                location.reload();
+            } else {
+                alert("Error updating status: " + (data.error || "Unknown error."));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("An error occurred while updating the delivery status.");
+        });
+    }
+
+
+
+    window.getSelectedIds = function() {
+        // Get IDs from the data-id attribute of the table rows from the active tab
+        return Array.from(document.querySelectorAll('.delivery-category-content.active .delivery-checkbox:checked'))
+                    .map(cb => cb.dataset.id);
+    }
+
+    // Re-attach archive button listener, as it was outside DOMContentLoaded
+    archiveSelectedBtn.addEventListener('click', function() {
+        const ids = getSelectedIds();
+        if (!ids.length) return alert("No deliveries selected.");
+        if (!confirm("Are you sure you want to archive the selected deliveries? This action cannot be undone.")) return;
+
+        fetch("{% url 'delivery:archive_deliveries' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ ids: ids })
+        }).then(res => res.json()).then(data => {
+            if (data.success) {
+                alert("Deliveries archived successfully!");
+                location.reload(); // Reload the page to show updated list
+            } else {
+                alert("Error archiving deliveries: " + (data.error || "Unknown error."));
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+            alert("An error occurred while communicating with the server.");
+        });
+    });
+
+
+    window.updateDeliveryStatus = function(deliveryId) {
+        const newStatus = prompt("Enter new delivery status (e.g., pending_dispatch, out_for_delivery, delivered, failed):");
+        if (newStatus === null || newStatus.trim() === "") {
+            return; // User cancelled or entered empty
+        }
+
+        const validStatuses = ['pending_dispatch', 'out_for_delivery', 'delivered', 'failed'];
+        if (!validStatuses.includes(newStatus)) {
+            alert("Invalid status. Please choose from: " + validStatuses.join(', '));
+            return;
+        }
+
+        fetch(`/delivery/update_status/${deliveryId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ status: newStatus })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert("Delivery status updated successfully!");
+                // Reload data and re-render all tabs to ensure consistency
+                // A full page reload is often simplest if data changes might affect multiple tabs
+                location.reload();
+            } else {
+                alert("Error updating status: " + (data.error || "Unknown error."));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("An error occurred while updating the delivery status.");
+        });
+    }
+
+    // Initial render when the page loads, showing the 'All Deliveries' tab
+    renderDeliveries('all');
+});
+</script>
+
+{% endblock %}

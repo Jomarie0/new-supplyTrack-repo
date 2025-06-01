@@ -1,0 +1,270 @@
+{% extends 'base_admin.html' %}
+{% load static %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/inventory/inventory.css' %}">
+{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Inventory</h1>
+
+<div class="action-buttons">
+    {% if request.user.role == 'admin' or request.user.role == 'manager' or request.user.role == 'staff' %}
+        <button class="add-product-btn" onclick="openModal('add')">Add Product</button>
+        <button class="update-btn" onclick="populateFormForUpdate()">Update</button>
+        <button class="delete-btn" onclick="deleteSelected()">Delete</button>
+        <a href="{% url 'inventory:archive_list' %}">🗂  View Archived Products</a>
+    {% endif %}
+</div>
+
+---
+
+<input type="text" class="search-input" placeholder="Search products..." />
+
+---
+
+<div class="table-wrapper">
+    <table class="inventory-table">
+        <thead>
+            <tr>
+                <th><input type="checkbox" id="select-all"></th>
+                <th>Product ID</th>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Supplier</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Reorder Level</th>
+                <th>Unit</th>
+                <th>Category</th>
+                <th>Created At</th>
+                <th>Updated At</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                {# The data-id attribute is crucial for update/delete #}
+                <td><input type="checkbox" class="product-checkbox" data-id="{{ product.id }}"></td>
+                <td>{{ product.product_id }}</td>
+                <td>{{ product.name }}</td>
+                <td>{{ product.description }}</td>
+                {# Store supplier ID in a data attribute #}
+                <td data-supplier-id="{{ product.supplier.id }}">{{ product.supplier.name }}</td> 
+                <td>{{ product.price }}</td>
+                <td>{{ product.stock_quantity }}</td>
+                <td>{{ product.reorder_level }}</td>
+                <td>{{ product.unit }}</td>
+                {# --- FIX: Added data-category-id to the category cell --- #}
+                <td data-category-id="{{ product.category.id }}">{{ product.category }}</td> 
+                <td>{{ product.created_at|date:"Y-m-d H:i" }}</td>
+                <td>{{ product.updated_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="12">No products available.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+---
+
+<div id="formModal" class="modal hidden">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2 id="modal-title">Add Product</h2>
+        <form method="POST" id="product-form">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" id="hidden-product-id"> 
+
+            {% if form.errors %}
+                <div class="error-messages">
+                    <ul>
+                        {% for field in form %}
+                            {% for error in field.errors %}
+                                <li>{{ field.label }}: {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            {{ form.as_p }}
+            <button type="submit" class="submit-btn">Save</button>
+        </form>
+    </div>
+</div>
+
+---
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- Modal Control Functions ---
+        window.openModal = function(mode = 'add') { 
+            document.getElementById('formModal').classList.remove('hidden');
+            if (mode === 'add') {
+                document.getElementById('hidden-product-id').value = '';
+                document.getElementById("modal-title").textContent = "Add Product";
+                document.querySelector(".submit-btn").textContent = "Save";
+                document.getElementById('product-form').reset(); 
+            }
+        };
+
+        window.closeModal = function() {
+            document.getElementById('formModal').classList.add('hidden');
+            document.getElementById('product-form').reset();
+            document.getElementById("hidden-product-id").value = ''; 
+            document.getElementById("modal-title").textContent = "Add Product";
+            document.querySelector(".submit-btn").textContent = "Save";
+        };
+
+        // --- Populate Form for Update ---
+        window.populateFormForUpdate = function() {
+            const selectedCheckboxes = document.querySelectorAll('.product-checkbox:checked');
+
+            if (selectedCheckboxes.length !== 1) {
+                alert("Please select exactly one product to update.");
+                return;
+            }
+
+            const selectedRow = selectedCheckboxes[0].closest('tr');
+            const cells = selectedRow.querySelectorAll('td');
+
+            const product = {
+                id: selectedCheckboxes[0].dataset.id, 
+                product_id: cells[1].textContent.trim(),
+                name: cells[2].textContent.trim(),
+                description: cells[3].textContent.trim(),
+                supplier_id: cells[4].dataset.supplierId, 
+                price: cells[5].textContent.trim(),
+                stock_quantity: cells[6].textContent.trim(),
+                reorder_level: cells[7].textContent.trim(),
+                unit: cells[8].textContent.trim(),
+                // --- FIX: Get category ID from data attribute ---
+                category_id: cells[9].dataset.categoryId, 
+            };
+
+            document.getElementById("hidden-product-id").value = product.id; 
+            
+            // Populate form fields using their Django-generated IDs
+            if (document.getElementById('id_product_id')) document.getElementById('id_product_id').value = product.product_id;
+            if (document.getElementById('id_name')) document.getElementById('id_name').value = product.name;
+            if (document.getElementById('id_description')) document.getElementById('id_description').value = product.description;
+            
+            const supplierSelect = document.getElementById('id_supplier');
+            if (supplierSelect && product.supplier_id) {
+                supplierSelect.value = product.supplier_id;
+            }
+
+            if (document.getElementById('id_price')) document.getElementById('id_price').value = product.price;
+            if (document.getElementById('id_stock_quantity')) document.getElementById('id_stock_quantity').value = product.stock_quantity;
+            if (document.getElementById('id_reorder_level')) document.getElementById('id_reorder_level').value = product.reorder_level;
+            if (document.getElementById('id_unit')) document.getElementById('id_unit').value = product.unit;
+            
+            // --- FIX: Populate the category select field using its ID ---
+            const categorySelect = document.getElementById('id_category');
+            if (categorySelect && product.category_id) {
+                categorySelect.value = product.category_id;
+            }
+
+
+            document.getElementById("modal-title").textContent = "Update Product";
+            document.querySelector(".submit-btn").textContent = "Update";
+
+            openModal('update'); 
+        };
+
+        // --- Search Functionality ---
+        document.querySelector('.search-input').addEventListener('input', function (e) {
+            const keyword = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('.inventory-table tbody tr');
+
+            rows.forEach(row => {
+                const cells = Array.from(row.children);
+                const rowText = cells.slice(1).map(cell => cell.textContent.toLowerCase()).join(' ');
+
+                if (rowText.includes(keyword)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+
+        // --- Delete Selected Products ---
+        window.deleteSelected = function() {
+            const ids = Array.from(document.querySelectorAll('.product-checkbox:checked'))
+                .map(cb => cb.dataset.id);
+            
+            if (ids.length === 0) {
+                alert("Please select at least one product to delete.");
+                return;
+            }
+        
+            if (!confirm("Are you sure you want to delete the selected products?")) {
+                return;
+            }
+        
+            fetch("{% url 'inventory:delete_products' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken() 
+                },
+                body: JSON.stringify({ ids })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload(); 
+                } else {
+                    alert("Failed to delete products: " + (data.message || "Unknown error"));
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("An error occurred while deleting.");
+            });
+        };
+
+        // --- CSRF Token Helper ---
+        function getCSRFToken() {
+            const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+            return csrfInput ? csrfInput.value : '';
+        }
+        
+        // --- Select All Checkboxes Logic ---
+        const selectAllCheckbox = document.getElementById('select-all');
+        const productCheckboxes = document.querySelectorAll('.product-checkbox');
+    
+        selectAllCheckbox.addEventListener('change', function () {
+            productCheckboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+        });
+
+        // --- Ensure only one checkbox is selected for update ---
+        productCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                if (this.checked) {
+                    productCheckboxes.forEach(otherCb => {
+                        if (otherCb !== this) {
+                            otherCb.checked = false;
+                        }
+                    });
+                    if (selectAllCheckbox.checked && !Array.from(productCheckboxes).every(checkbox => checkbox.checked)) {
+                        selectAllCheckbox.checked = false;
+                    }
+                } else {
+                    if (selectAllCheckbox.checked) {
+                        selectAllCheckbox.checked = false;
+                    }
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

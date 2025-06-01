@@ -1,0 +1,934 @@
+{% extends 'base_admin.html' %}
+{% load static%}
+{# REMOVED: {% load custom_filters %} #} 
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/orders/orders.css' %}">
+<style>
+    /* Add any specific styles for the new tables if needed */
+    .table-section {
+        margin-top: 40px; /* More space between table sections */
+        padding-top: 20px;
+        border-top: 1px solid #eee; /* Light separator */
+    }
+    .table-section h2 {
+        margin-bottom: 15px;
+        color: #333;
+    }
+
+    /* Styles for the new tabbed interface */
+    .tab-navigation {
+        display: flex; /* Makes buttons line up horizontally */
+        flex-wrap: nowrap; /* Allows wrapping if too many tabs */
+        gap: 10px; /* Space between buttons */
+        margin-bottom: 20px;
+        border-bottom: 2px solid #ddd; /* Separator below tabs */
+        padding-bottom: 10px;
+    }
+
+    .tab-button {
+        padding: 10px 15px;
+        border: 1px solid #ccc;
+        border-bottom: none; /* Make it look like a tab */
+        background-color: #f0f0f0;
+        cursor: pointer;
+        font-weight: bold;
+        color: #555;
+        border-radius: 5px 5px 0 0; /* Rounded top corners */
+        transition: background-color 0.3s, color 0.3s;
+    }
+
+    .tab-button.active {
+        background-color: #fff;
+        color: #f5f5f5;
+        background: #007bff;
+        border-color: #007bff; /* Highlight active tab */
+        border-bottom: 2px solid #fff; /* "Connect" to the content below */
+        margin-bottom: -2px; /* Pull it slightly down to overlap border */
+    }
+
+    .tab-button:hover:not(.active) {
+        background-color: #e0e0e0;
+    }
+
+    .tab-content-container {
+        border: 1px solid #ddd; /* Border around the entire content area */
+        border-top: none; /* Connects with the active tab */
+        padding: 20px;
+        background-color: #fff;
+        min-height: 300px; /* Give it some minimum height */
+    }
+
+    .tab-pane {
+        display: none; /* Hidden by default */
+    }
+
+    .tab-pane.active {
+        display: block; /* Show active pane */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Customer Orders</h1>
+
+<div class="orders-layout">
+  <div class="orders-panel">
+
+    <div class="action-buttons">
+      <button class="add-order-btn" onclick="openModal()">Add Order</button>
+      <button class="update-btn" onclick="populateFormForUpdate()">Update</button>
+      <button class="delete-btn" onclick="deleteSelected()">Delete</button>
+      <a href="{% url 'orders:archived_orders' %}" class="btn">🗂 View Archive Orders</a>
+    </div>
+
+    <input type="text" class="search-input" placeholder="Search orders..." />
+
+    {# --- TAB NAVIGATION --- #}
+    <div class="tab-navigation">
+    <button class="tab-button active" data-tab-target="all-orders">
+        All Orders <span class="order-count">{{ all_orders_count }}</span>
+    </button>
+        {# Generate buttons for each status using order_statuses_choices #}
+        {% for status_key, status_display in order_statuses_choices %}
+            <button class="tab-button" data-tab-target="{{ status_key|lower }}-orders">
+              {{ status_display }} Orders
+              {# Use specific count variables based on status_key #}
+              {% if status_key == 'Pending' %}<span class="order-count">{{ pending_count }}</span>
+              {% elif status_key == 'Shipped' %}<span class="order-count">{{ shipped_count }}</span>
+              {% elif status_key == 'Canceled' %}<span class="order-count">{{ canceled_count }}</span>
+              {% elif status_key == 'Processing' %}<span class="order-count">{{ processing_count }}</span>
+              {% elif status_key == 'Completed' %}<span class="order-count">{{ completed_count }}</span>
+              {% elif status_key == 'Returned' %}<span class="order-count">{{ returned_count }}</span>
+              
+              {# ...and so on for other statuses #}
+              {% endif %}
+              </button>        
+          {% endfor %}
+    </div>
+
+    {# --- TAB CONTENT CONTAINERS --- #}
+    <div class="tab-content-container">
+
+        {# --- ALL ORDERS TAB PANE (DEFAULT ACTIVE) --- #}
+        <div id="all-orders" class="tab-pane active">
+            <h2>All Orders</h2>
+            <div class="table-wrapper">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all"></th>
+                            <th>Order-ID</th>
+                            <th>Product Details</th>
+                            <th>Order Total</th>
+                            <th>Order Date</th>
+                            <th>Expected Delivery</th>
+                            <th>Status</th>
+                            <th>Customer</th>
+                            <th>Shipping Address</th>
+                            <th>Billing Address</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for order in orders %} 
+                                                <tr>
+                            <!-- ✅ UPDATED HERE -->
+                            <td>
+                                <input type="checkbox"
+                                    class="order-checkbox"
+                                    data-id="{{ order.id }}"
+                                    data-customer-id="{{ order.customer.id }}">
+                            </td>
+
+                            <!-- order_display_id (index 1) -->
+                            <td>{{ order.order_id }}</td>
+
+                            <!-- product details (index 2) -->
+                            <td>
+                                <ul class="list-unstyled mb-0 small">
+                                    {% for item in order.items.all %}
+                                        <li>
+                                            <strong>{{ item.product_variant.product.name }}</strong>
+                                            {% if item.product_variant.size %}({{ item.product_variant.size }}){% endif %}
+                                            {% if item.product_variant.color %}({{ item.product_variant.color }}){% endif %}<br>
+                                            Qty: {{ item.quantity }} @ ₱{{ item.price_at_order }} = ₱{{ item.get_cost }}
+                                        </li>
+                                    {% empty %}
+                                        <li>No orders found.</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+
+                            <!-- order total (index 3) -->
+                            <td>₱{{ order.get_total_cost }}</td>
+
+                            <!-- order_date (index 4) -->
+                        <td>{{ order.order_date|date:"Y-m-d H:i:s" }}</td>
+
+                            <!-- expected_delivery_date (index 5) -->
+                            <td>{{ order.expected_delivery_date}}</td>
+
+                            <td>{{ order.status }}</td>
+
+                            <!-- customer (index 6) -->
+                            <td>
+                                {{ order.customer.username }}
+                            </td>
+
+                            <!-- shipping_address (index 7) -->
+                            <td>{{ order.shipping_address }}</td>
+
+                            <!-- billing_address (index 8) -->
+                            <td>{{ order.billing_address }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="11">No orders found.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {# --- PENDING ORDERS TAB PANE --- #}
+        <div id="pending-orders" class="tab-pane">
+            <h2>Pending Orders</h2>
+            <div class="table-wrapper">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all"></th>
+                            <th>Order-ID</th>
+                            <th>Product Details</th>
+                            <th>Order Total</th>
+                            <th>Order Date</th>
+                            <th>Expected Delivery</th>
+                            <th>Status</th>
+                            <th>Customer</th>
+                            <th>Shipping Address</th>
+                            <th>Billing Address</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for order in pending_orders reversed %} 
+                                                <tr>
+                            <!-- ✅ UPDATED HERE -->
+                            <td>
+                                <input type="checkbox"
+                                    class="order-checkbox"
+                                    data-id="{{ order.id }}"
+                                    data-customer-id="{{ order.customer.id }}">
+                            </td>
+
+                            <!-- order_display_id (index 1) -->
+                            <td>{{ order.order_id }}</td>
+
+                            <!-- product details (index 2) -->
+                            <td>
+                                <ul class="list-unstyled mb-0 small">
+                                    {% for item in order.items.all %}
+                                        <li>
+                                            <strong>{{ item.product_variant.product.name }}</strong>
+                                            {% if item.product_variant.size %}({{ item.product_variant.size }}){% endif %}
+                                            {% if item.product_variant.color %}({{ item.product_variant.color }}){% endif %}<br>
+                                            Qty: {{ item.quantity }} @ ₱{{ item.price_at_order }} = ₱{{ item.get_cost }}
+                                        </li>
+                                    {% empty %}
+                                        <li>No orders found.</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+
+                            <!-- order total (index 3) -->
+                            <td>₱{{ order.get_total_cost }}</td>
+
+                            <!-- order_date (index 4) -->
+                        <td>{{ order.order_date|date:"Y-m-d H:i:s" }}</td>
+
+                            <!-- expected_delivery_date (index 5) -->
+                            <td>{{ order.expected_delivery_date}}</td>
+
+                            <td>{{ order.status }}</td>
+
+                            <!-- customer (index 6) -->
+                            <td>
+                                {{ order.customer.username }}
+                            </td>
+
+                            <!-- shipping_address (index 7) -->
+                            <td>{{ order.shipping_address }}</td>
+
+                            <!-- billing_address (index 8) -->
+                            <td>{{ order.billing_address }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="11">No orders found.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {# --- Processing ORDERS TAB PANE --- #}
+        <div id="processing-orders" class="tab-pane">
+            <h2>Processing Orders</h2>
+            <div class="table-wrapper">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all"></th>
+                            <th>Order-ID</th>
+                            <th>Product Details</th>
+                            <th>Order Total</th>
+                            <th>Order Date</th>
+                            <th>Expected Delivery</th>
+                            <th>Status</th>
+                            <th>Customer</th>
+                            <th>Shipping Address</th>
+                            <th>Billing Address</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for order in processing_orders reversed %} 
+                                                <tr>
+                            <!-- ✅ UPDATED HERE -->
+                            <td>
+                                <input type="checkbox"
+                                    class="order-checkbox"
+                                    data-id="{{ order.id }}"
+                                    data-customer-id="{{ order.customer.id }}">
+                            </td>
+
+                            <!-- order_display_id (index 1) -->
+                            <td>{{ order.order_id }}</td>
+
+                            <!-- product details (index 2) -->
+                            <td>
+                                <ul class="list-unstyled mb-0 small">
+                                    {% for item in order.items.all %}
+                                        <li>
+                                            <strong>{{ item.product_variant.product.name }}</strong>
+                                            {% if item.product_variant.size %}({{ item.product_variant.size }}){% endif %}
+                                            {% if item.product_variant.color %}({{ item.product_variant.color }}){% endif %}<br>
+                                            Qty: {{ item.quantity }} @ ₱{{ item.price_at_order }} = ₱{{ item.get_cost }}
+                                        </li>
+                                    {% empty %}
+                                        <li>No orders found.</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+
+                            <!-- order total (index 3) -->
+                            <td>₱{{ order.get_total_cost }}</td>
+
+                            <!-- order_date (index 4) -->
+                        <td>{{ order.order_date|date:"Y-m-d H:i:s" }}</td>
+
+                            <!-- expected_delivery_date (index 5) -->
+                            <td>{{ order.expected_delivery_date}}</td>
+
+                            <td>{{ order.status }}</td>
+
+                            <!-- customer (index 6) -->
+                            <td>
+                                {{ order.customer.username }}
+                            </td>
+
+                            <!-- shipping_address (index 7) -->
+                            <td>{{ order.shipping_address }}</td>
+
+                            <!-- billing_address (index 8) -->
+                            <td>{{ order.billing_address }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="11">No Processing Order Found.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {# --- SHIPPED ORDERS TAB PANE --- #}
+        <div id="shipped-orders" class="tab-pane">
+            <h2>Shipped Orders</h2>
+            <div class="table-wrapper">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all"></th>
+                            <th>Order-ID</th>
+                            <th>Product Details</th>
+                            <th>Order Total</th>
+                            <th>Order Date</th>
+                            <th>Expected Delivery</th>
+                            <th>Status</th>
+                            <th>Customer</th>
+                            <th>Shipping Address</th>
+                            <th>Billing Address</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for order in shipped_orders reversed %} 
+                                                <tr>
+                            <!-- ✅ UPDATED HERE -->
+                            <td>
+                                <input type="checkbox"
+                                    class="order-checkbox"
+                                    data-id="{{ order.id }}"
+                                    data-customer-id="{{ order.customer.id }}">
+                            </td>
+
+                            <!-- order_display_id (index 1) -->
+                            <td>{{ order.order_id }}</td>
+
+                            <!-- product details (index 2) -->
+                            <td>
+                                <ul class="list-unstyled mb-0 small">
+                                    {% for item in order.items.all %}
+                                        <li>
+                                            <strong>{{ item.product_variant.product.name }}</strong>
+                                            {% if item.product_variant.size %}({{ item.product_variant.size }}){% endif %}
+                                            {% if item.product_variant.color %}({{ item.product_variant.color }}){% endif %}<br>
+                                            Qty: {{ item.quantity }} @ ₱{{ item.price_at_order }} = ₱{{ item.get_cost }}
+                                        </li>
+                                    {% empty %}
+                                        <li>No orders found.</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+
+                            <!-- order total (index 3) -->
+                            <td>₱{{ order.get_total_cost }}</td>
+
+                            <!-- order_date (index 4) -->
+                        <td>{{ order.order_date|date:"Y-m-d H:i:s" }}</td>
+
+                            <!-- expected_delivery_date (index 5) -->
+                            <td>{{ order.expected_delivery_date}}</td>
+
+                            <td>{{ order.status }}</td>
+
+                            <!-- customer (index 6) -->
+                            <td>
+                                {{ order.customer.username }}
+                            </td>
+
+                            <!-- shipping_address (index 7) -->
+                            <td>{{ order.shipping_address }}</td>
+
+                            <!-- billing_address (index 8) -->
+                            <td>{{ order.billing_address }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="11">No orders found.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {# --- Completed ORDERS TAB PANE --- #}
+        <div id="completed-orders" class="tab-pane">
+            <h2>Completed Orders</h2>
+            <div class="table-wrapper">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all"></th>
+                            <th>Order-ID</th>
+                            <th>Product Details</th>
+                            <th>Order Total</th>
+                            <th>Order Date</th>
+                            <th>Expected Delivery</th>
+                            <th>Status</th>
+                            <th>Customer</th>
+                            <th>Shipping Address</th>
+                            <th>Billing Address</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for order in completed_orders reversed %} 
+                                                <tr>
+                            <!-- ✅ UPDATED HERE -->
+                            <td>
+                                <input type="checkbox"
+                                    class="order-checkbox"
+                                    data-id="{{ order.id }}"
+                                    data-customer-id="{{ order.customer.id }}">
+                            </td>
+
+                            <!-- order_display_id (index 1) -->
+                            <td>{{ order.order_id }}</td>
+
+                            <!-- product details (index 2) -->
+                            <td>
+                                <ul class="list-unstyled mb-0 small">
+                                    {% for item in order.items.all %}
+                                        <li>
+                                            <strong>{{ item.product_variant.product.name }}</strong>
+                                            {% if item.product_variant.size %}({{ item.product_variant.size }}){% endif %}
+                                            {% if item.product_variant.color %}({{ item.product_variant.color }}){% endif %}<br>
+                                            Qty: {{ item.quantity }} @ ₱{{ item.price_at_order }} = ₱{{ item.get_cost }}
+                                        </li>
+                                    {% empty %}
+                                        <li>No orders found.</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+
+                            <!-- order total (index 3) -->
+                            <td>₱{{ order.get_total_cost }}</td>
+
+                            <!-- order_date (index 4) -->
+                        <td>{{ order.order_date|date:"Y-m-d H:i:s" }}</td>
+
+                            <!-- expected_delivery_date (index 5) -->
+                            <td>{{ order.expected_delivery_date}}</td>
+
+                            <td>{{ order.status }}</td>
+
+                            <!-- customer (index 6) -->
+                            <td>
+                                {{ order.customer.username }}
+                            </td>
+
+                            <!-- shipping_address (index 7) -->
+                            <td>{{ order.shipping_address }}</td>
+
+                            <!-- billing_address (index 8) -->
+                            <td>{{ order.billing_address }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="11">No Completed Orders found.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {# --- Canceled ORDERS TAB PANE --- #}
+        <div id="canceled-orders" class="tab-pane">
+            <h2>Canceled Orders</h2>
+            <div class="table-wrapper">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all"></th>
+                            <th>Order-ID</th>
+                            <th>Product Details</th>
+                            <th>Order Total</th>
+                            <th>Order Date</th>
+                            <th>Expected Delivery</th>
+                            <th>Status</th>
+                            <th>Customer</th>
+                            <th>Shipping Address</th>
+                            <th>Billing Address</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for order in canceled_orders reversed %} 
+                                                <tr>
+                            <!-- ✅ UPDATED HERE -->
+                            <td>
+                                <input type="checkbox"
+                                    class="order-checkbox"
+                                    data-id="{{ order.id }}"
+                                    data-customer-id="{{ order.customer.id }}">
+                            </td>
+
+                            <!-- order_display_id (index 1) -->
+                            <td>{{ order.order_id }}</td>
+
+                            <!-- product details (index 2) -->
+                            <td>
+                                <ul class="list-unstyled mb-0 small">
+                                    {% for item in order.items.all %}
+                                        <li>
+                                            <strong>{{ item.product_variant.product.name }}</strong>
+                                            {% if item.product_variant.size %}({{ item.product_variant.size }}){% endif %}
+                                            {% if item.product_variant.color %}({{ item.product_variant.color }}){% endif %}<br>
+                                            Qty: {{ item.quantity }} @ ₱{{ item.price_at_order }} = ₱{{ item.get_cost }}
+                                        </li>
+                                    {% empty %}
+                                        <li>No orders found.</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+
+                            <!-- order total (index 3) -->
+                            <td>₱{{ order.get_total_cost }}</td>
+
+                            <!-- order_date (index 4) -->
+                        <td>{{ order.order_date|date:"Y-m-d H:i:s" }}</td>
+
+                            <!-- expected_delivery_date (index 5) -->
+                            <td>{{ order.expected_delivery_date}}</td>
+
+                            <td>{{ order.status }}</td>
+
+                            <!-- customer (index 6) -->
+                            <td>
+                                {{ order.customer.username }}
+                            </td>
+
+                            <!-- shipping_address (index 7) -->
+                            <td>{{ order.shipping_address }}</td>
+
+                            <!-- billing_address (index 8) -->
+                            <td>{{ order.billing_address }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="11">No Canceled Orders found.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {# --- RETURNED ORDERS TAB PANE --- #}
+        <div id="returned-orders" class="tab-pane">
+            <h2>Returned Orders</h2>
+            <div class="table-wrapper">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all"></th>
+                            <th>Order-ID</th>
+                            <th>Product Details</th>
+                            <th>Order Total</th>
+                            <th>Order Date</th>
+                            <th>Expected Delivery</th>
+                            <th>Status</th>
+                            <th>Customer</th>
+                            <th>Shipping Address</th>
+                            <th>Billing Address</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for order in returned_orders reversed %} 
+                                                <tr>
+                            <!-- ✅ UPDATED HERE -->
+                            <td>
+                                <input type="checkbox"
+                                    class="order-checkbox"
+                                    data-id="{{ order.id }}"
+                                    data-customer-id="{{ order.customer.id }}">
+                            </td>
+
+                            <!-- order_display_id (index 1) -->
+                            <td>{{ order.order_id }}</td>
+
+                            <!-- product details (index 2) -->
+                            <td>
+                                <ul class="list-unstyled mb-0 small">
+                                    {% for item in order.items.all %}
+                                        <li>
+                                            <strong>{{ item.product_variant.product.name }}</strong>
+                                            {% if item.product_variant.size %}({{ item.product_variant.size }}){% endif %}
+                                            {% if item.product_variant.color %}({{ item.product_variant.color }}){% endif %}<br>
+                                            Qty: {{ item.quantity }} @ ₱{{ item.price_at_order }} = ₱{{ item.get_cost }}
+                                        </li>
+                                    {% empty %}
+                                        <li>No orders found.</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+
+                            <!-- order total (index 3) -->
+                            <td>₱{{ order.get_total_cost }}</td>
+
+                            <!-- order_date (index 4) -->
+                        <td>{{ order.order_date|date:"Y-m-d H:i:s" }}</td>
+
+                            <!-- expected_delivery_date (index 5) -->
+                            <td>{{ order.expected_delivery_date}}</td>
+
+                            <td>{{ order.status }}</td>
+
+                            <!-- customer (index 6) -->
+                            <td>
+                                {{ order.customer.username }}
+                            </td>
+
+                            <!-- shipping_address (index 7) -->
+                            <td>{{ order.shipping_address }}</td>
+
+                            <!-- billing_address (index 8) -->
+                            <td>{{ order.billing_address }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="11">No Returned Orders Found.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+
+
+    <div id="formModal" class="modal hidden">
+      <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2>Add / Update Order</h2>
+        <form method="POST" id="order-form">
+          {% csrf_token %}
+          <input type="hidden" name="order_id" id="hidden-order-id" value="">
+
+          {% if form.errors %}
+            <div class="error-messages">
+              <ul>
+                {% for field in form %}
+                  {% for error in field.errors %}
+                    <li>{{ field.label }}: {{ error }}</li>
+                  {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          {{ form.as_p }}
+
+          <button type="submit" class="submit-btn">Save</button>
+          <button type="button" class="cancel-btn btn btn-secondary" onclick="closeModal()">Cancel</button>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="statusModal" class="modal" style="display:none;">
+  <div class="modal-content p-4 bg-white rounded">
+    <h3>Update Order Status</h3>
+    <form id="statusForm">
+      <input type="hidden" id="status-order-id" name="order_id">
+      <label for="new-status">New Status:</label>
+      <select id="new-status" name="status" class="form-control">
+        <option value="Pending">Pending</option>
+        <option value="Processing">Processing</option>
+        <option value="Shipped">Shipped</option>
+        <option value="Delivered">Delivered</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+      <button type="submit" class="btn btn-primary mt-2">Save</button>
+    </form>
+  </div>
+</div>
+
+</div>
+
+<script>
+    document.querySelectorAll('.update-status-btn').forEach(button => {
+  button.addEventListener('click', function () {
+    const orderId = this.dataset.orderId;
+    const currentStatus = this.dataset.currentStatus;
+
+    document.getElementById('status-order-id').value = orderId;
+    document.getElementById('new-status').value = currentStatus;
+
+    document.getElementById('statusModal').style.display = 'block';
+  });
+});
+document.getElementById('statusForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+
+  const orderId = document.getElementById('status-order-id').value;
+  const newStatus = document.getElementById('new-status').value;
+
+  fetch(`/orders/update-status/${orderId}/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCSRFToken(), // implement this if not using jQuery
+    },
+    body: JSON.stringify({ status: newStatus }),
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('Status updated!');
+        location.reload(); // or update just that row
+      } else {
+        alert('Failed to update status.');
+      }
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  // --- Tab Switching Logic ---
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const tabPanes = document.querySelectorAll('.tab-pane');
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const targetTabId = button.dataset.tabTarget;
+
+      // Deactivate current active tab and pane
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabPanes.forEach(pane => pane.classList.remove('active'));
+
+      // Activate clicked tab and its pane
+      button.classList.add('active');
+      document.getElementById(targetTabId).classList.add('active');
+    });
+  });
+
+  // --- MODAL & FORM LOGIC (Existing from previous versions) ---
+  window.openModal = function() {
+    document.getElementById('formModal').classList.remove('hidden');
+  };
+
+  window.closeModal = function() {
+    document.getElementById('formModal').classList.add('hidden');
+    document.getElementById('hidden-order-id').value = ''; 
+    document.querySelector('.submit-btn').textContent = 'Save';
+    document.getElementById('order-form').reset();
+    const errorDiv = document.querySelector('.error-messages');
+    if (errorDiv) errorDiv.innerHTML = ''; 
+  };
+
+    window.populateFormForUpdate = function () {
+        const sel = document.querySelectorAll('.order-checkbox:checked');
+        if (sel.length !== 1) {
+            alert('Please select exactly one order to update.');
+            return;
+        }
+
+        const row = sel[0].closest('tr');
+        const cells = row.children;
+
+        const order_display_id = cells[1]?.textContent.trim();
+        const order_date_raw = cells[4]?.textContent.trim() || '';  // Full datetime string
+        const expected_delivery_text = cells[5]?.textContent.trim() || '';
+        const status_text = cells[6]?.textContent.trim() || '';
+        const shipping_address = cells[8]?.textContent.trim() || '';
+        const billing_address = cells[9]?.textContent.trim() || '';
+
+        // No splitting here, keep full datetime string
+        const order_date_formatted = order_date_raw;
+
+        // Handle expected delivery date if '—' or empty string
+        const expected_delivery_formatted = (expected_delivery_text === '—') ? '' : expected_delivery_text;
+
+        // Set form values
+        document.getElementById('hidden-order-id').value = order_display_id || '';
+
+        const orderDateInput = document.getElementById('id_order_date');
+        if (orderDateInput) orderDateInput.value = order_date_formatted;
+
+        const expectedDeliveryInput = document.getElementById('id_expected_delivery_date');
+        if (expectedDeliveryInput) expectedDeliveryInput.value = expected_delivery_formatted;
+
+        // Fix status select: match option text case-insensitive
+        const statusInput = document.getElementById('id_status');
+        if (statusInput) {
+            if (statusInput.tagName.toLowerCase() === 'select') {
+                let found = false;
+                for (const option of statusInput.options) {
+                    if (option.text.trim().toLowerCase() === status_text.toLowerCase()) {
+                        statusInput.value = option.value;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    statusInput.value = ''; // fallback empty if no match
+                }
+            } else {
+                // For text inputs, just assign directly
+                statusInput.value = status_text;
+            }
+        }
+
+        const shippingInput = document.getElementById('id_shipping_address');
+        if (shippingInput) shippingInput.value = shipping_address;
+
+        const billingInput = document.getElementById('id_billing_address');
+        if (billingInput) billingInput.value = billing_address;
+
+        // Customer ID from checkbox dataset
+        const customer_id = sel[0].dataset.customerId;
+        const customerSelect = document.getElementById('id_customer');
+        if (customerSelect && customer_id) customerSelect.value = customer_id;
+
+        // Update submit button text and open modal
+        const submitBtn = document.querySelector('.submit-btn');
+        if (submitBtn) submitBtn.textContent = 'Update Order';
+
+        openModal();
+    };
+
+
+
+
+  // --- SEARCH LOGIC ---
+  document.querySelector('.search-input').addEventListener('input', function(e) {
+    const kw = e.target.value.toLowerCase();
+    // This search input will only apply to the CURRENTLY ACTIVE table
+    document.querySelectorAll('.tab-pane.active .orders-table tbody tr').forEach(row => {
+      const text = Array.from(row.children).slice(1) // Slice from 1 to avoid checkbox column
+        .map(td => td.textContent.toLowerCase())
+        .join(' ');
+      row.style.display = text.includes(kw) ? '' : 'none';
+    });
+  });
+
+  // --- DELETE LOGIC ---
+  window.deleteSelected = function() {
+    // This will now target checkboxes in the currently active tab
+    const ids = Array.from(document.querySelectorAll('.tab-pane.active .order-checkbox:checked'))
+      .map(cb => cb.dataset.id); 
+
+    if (!ids.length) return alert('Please select at least one order from the active tab.');
+    if (!confirm('Are you sure you want to delete the selected orders? This action moves them to archive.')) return;
+    
+    fetch("{% url 'orders:delete_orders' %}", { 
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': (document.querySelector('[name=csrfmiddlewaretoken]')||{}).value
+      },
+      body: JSON.stringify({ ids: ids }) 
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        alert('Orders successfully moved to archive!');
+        location.reload();
+      }
+      else {
+        alert('Error deleting orders: ' + (data.error || 'Unknown error.'));
+      }
+    })
+    .catch(e => {
+        console.error('Fetch error:', e);
+        alert('An error occurred while communicating with the server.');
+    });
+  };
+
+  // --- SELECT ALL CHECKBOX LOGIC ---
+  const selectAllCheckbox = document.getElementById('select-all');
+  if (selectAllCheckbox) {
+      selectAllCheckbox.addEventListener('change', function() {
+          // This now only affects checkboxes in the "All Orders" tab
+          document.querySelectorAll('#all-orders .order-checkbox')
+            .forEach(cb => cb.checked = this.checked);
+      });
+  }
+
+  document.querySelectorAll('#all-orders .order-checkbox').forEach(cb => {
+      cb.addEventListener('change', function() {
+          const allChecked = Array.from(document.querySelectorAll('#all-orders .order-checkbox')).every(c => c.checked);
+          if (selectAllCheckbox) {
+              selectAllCheckbox.checked = allChecked;
+          }
+      });
+  });
+});
+</script>
+
+{% endblock %}

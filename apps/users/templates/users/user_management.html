@@ -1,0 +1,690 @@
+{% extends 'base_admin.html' %}
+{% load static %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/users/user_management.css' %}">
+<style>
+/* User Management Styles */
+.user-management-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.section-title {
+    color: #333;
+    margin-bottom: 30px;
+    font-size: 28px;
+}
+
+/* Tabs Styling */
+.tabs {
+    border-bottom: 2px solid #e0e0e0;
+    margin-bottom: 20px;
+}
+
+.tab-nav {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: none;
+}
+
+.tab-nav li {
+    margin-right: 5px;
+}
+
+.tab-button {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-bottom: none;
+    padding: 12px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #666;
+    border-radius: 5px 5px 0 0;
+    transition: all 0.3s ease;
+}
+
+.tab-button:hover {
+    background: #e9e9e9;
+    color: #333;
+}
+
+.tab-button.active {
+    background: white;
+    color: #333;
+    border-color: #ccc;
+    font-weight: bold;
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+    padding: 20px 0;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Search Bar */
+.search-section {
+    margin-bottom: 20px;
+}
+
+.search-input {
+    width: 300px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+/* Tables */
+.table-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+.user-table th,
+.user-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.user-table th {
+    background: #f8f9fa;
+    font-weight: bold;
+    color: #555;
+}
+
+.user-table tr:hover {
+    background: #f9f9f9;
+}
+
+.user-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Checkboxes */
+input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* Buttons */
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+/* Action Buttons */
+.action-buttons {
+    margin-top: 20px;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 0;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    padding: 20px 20px 0 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+}
+
+.close-btn:hover {
+    color: #333;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    padding: 0 20px 20px 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-control, .form-select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-control:focus, .form-select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .tab-nav {
+        flex-wrap: wrap;
+    }
+    
+    .tab-button {
+        flex: 1;
+        min-width: 120px;
+        margin-bottom: 5px;
+    }
+    
+    .search-input {
+        width: 100%;
+    }
+    
+    .user-table {
+        font-size: 12px;
+    }
+    
+    .user-table th,
+    .user-table td {
+        padding: 8px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="user-management-container">
+    <h1 class="section-title">User Management</h1>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <ul class="tab-nav">
+            <li><button class="tab-button active" data-tab="admins">Admins ({{ admins.count }})</button></li>
+            <li><button class="tab-button" data-tab="managers">Managers ({{ managers.count }})</button></li>
+            <li><button class="tab-button" data-tab="staffs">Staff ({{ staffs.count }})</button></li>
+            <li><button class="tab-button" data-tab="suppliers">Suppliers ({{ suppliers.count }})</button></li>
+            <li><button class="tab-button" data-tab="deliverys">Delivery ({{ deliverys.count }})</button></li>
+        </ul>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-section">
+        <input type="text" class="search-input" placeholder="Search users..." />
+    </div>
+
+    <!-- Tab Contents -->
+    <div id="admins" class="tab-content active">
+        <div class="table-container">
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="select-all" data-table="admins"></th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in admins %}
+                    <tr>
+                        <td><input type="checkbox" class="user-checkbox" data-id="{{ user.id }}"></td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm edit-user-btn" 
+                                    data-user-id="{{ user.id }}" 
+                                    data-username="{{ user.username }}" 
+                                    data-email="{{ user.email }}" 
+                                    data-role="{{ user.role }}">
+                                Edit
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="empty-state">No admin users found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="managers" class="tab-content">
+        <div class="table-container">
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="select-all" data-table="managers"></th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in managers %}
+                    <tr>
+                        <td><input type="checkbox" class="user-checkbox" data-id="{{ user.id }}"></td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm edit-user-btn" 
+                                    data-user-id="{{ user.id }}" 
+                                    data-username="{{ user.username }}" 
+                                    data-email="{{ user.email }}" 
+                                    data-role="{{ user.role }}">
+                                Edit
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="empty-state">No manager users found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="staffs" class="tab-content">
+        <div class="table-container">
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="select-all" data-table="staffs"></th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in staffs %}
+                    <tr>
+                        <td><input type="checkbox" class="user-checkbox" data-id="{{ user.id }}"></td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm edit-user-btn" 
+                                    data-user-id="{{ user.id }}" 
+                                    data-username="{{ user.username }}" 
+                                    data-email="{{ user.email }}" 
+                                    data-role="{{ user.role }}">
+                                Edit
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="empty-state">No staff users found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="suppliers" class="tab-content">
+        <div class="table-container">
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="select-all" data-table="suppliers"></th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in suppliers %}
+                    <tr>
+                        <td><input type="checkbox" class="user-checkbox" data-id="{{ user.id }}"></td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm edit-user-btn" 
+                                    data-user-id="{{ user.id }}" 
+                                    data-username="{{ user.username }}" 
+                                    data-email="{{ user.email }}" 
+                                    data-role="{{ user.role }}">
+                                Edit
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="empty-state">No supplier users found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="deliverys" class="tab-content">
+        <div class="table-container">
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="select-all" data-table="deliverys"></th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in deliverys %}
+                    <tr>
+                        <td><input type="checkbox" class="user-checkbox" data-id="{{ user.id }}"></td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm edit-user-btn" 
+                                    data-user-id="{{ user.id }}" 
+                                    data-username="{{ user.username }}" 
+                                    data-email="{{ user.email }}" 
+                                    data-role="{{ user.role }}">
+                                Edit
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="empty-state">No delivery users found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <button class="btn btn-danger" onclick="deleteSelected()">Delete Selected</button>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div id="editUserModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">Edit User</h5>
+            <button type="button" class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
+        <form method="POST" id="editUserForm" action="{% url 'users:user_management' %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                <input type="hidden" name="user_id" id="modalUserId">
+                <div class="form-group">
+                    <label for="modalUsername" class="form-label">Username</label>
+                    <input type="text" name="username" class="form-control" id="modalUsername" required>
+                </div>
+                <div class="form-group">
+                    <label for="modalEmail" class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" id="modalEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="modalRole" class="form-label">Role</label>
+                    <select name="role" id="modalRole" class="form-select" required>
+                        <option value="admin">Admin</option>
+                        <option value="manager">Manager</option>
+                        <option value="staff">Staff</option>
+                        <option value="supplier">Supplier</option>
+                        <option value="delivery">Delivery</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Save changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab functionality
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetTab = this.dataset.tab;
+            
+            // Remove active class from all buttons and contents
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Add active class to clicked button and corresponding content
+            this.classList.add('active');
+            document.getElementById(targetTab).classList.add('active');
+            
+            // Trigger search on newly active tab
+            const searchInput = document.querySelector('.search-input');
+            if (searchInput && searchInput.value) {
+                searchInput.dispatchEvent(new Event('input'));
+            }
+        });
+    });
+
+    // Edit user functionality
+    document.querySelectorAll('.edit-user-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.dataset.userId;
+            const username = this.dataset.username;
+            const email = this.dataset.email;
+            const role = this.dataset.role;
+
+            document.getElementById('modalUserId').value = userId;
+            document.getElementById('modalUsername').value = username;
+            document.getElementById('modalEmail').value = email;
+            document.getElementById('modalRole').value = role;
+            
+            openModal();
+        });
+    });
+
+    // Search functionality
+    document.querySelector('.search-input').addEventListener('input', function(e) {
+        const keyword = e.target.value.toLowerCase();
+        const activeTab = document.querySelector('.tab-content.active');
+        if (!activeTab) return;
+        
+        const tbody = activeTab.querySelector('.user-table tbody');
+        if (!tbody) return;
+        
+        const rows = tbody.querySelectorAll('tr');
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length === 0) return;
+
+            // Search in username and email columns (skip checkbox column)
+            const texts = Array.from(cells).slice(1, 3).map(td => td.textContent.toLowerCase());
+            const matches = texts.some(text => text.includes(keyword));
+            row.style.display = matches ? '' : 'none';
+        });
+    });
+
+    // Select-all functionality
+    document.querySelectorAll('.select-all').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const tableId = this.dataset.table;
+            const activeTab = document.getElementById(tableId);
+            if (!activeTab) return;
+            
+            const checkboxes = activeTab.querySelectorAll('.user-checkbox');
+            checkboxes.forEach(cb => cb.checked = this.checked);
+        });
+    });
+});
+
+// Modal functions
+function openModal() {
+    document.getElementById('editUserModal').classList.add('show');
+}
+
+function closeModal() {
+    document.getElementById('editUserModal').classList.remove('show');
+}
+
+// Close modal when clicking outside
+document.getElementById('editUserModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
+});
+
+// Delete selected users
+function deleteSelected() {
+    const activeTab = document.querySelector('.tab-content.active');
+    if (!activeTab) return;
+    
+    const checkboxes = activeTab.querySelectorAll('.user-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+
+    if (ids.length === 0) {
+        alert("Please select at least one user to delete.");
+        return;
+    }
+
+    if (!confirm("Are you sure you want to delete the selected users?")) {
+        return;
+    }
+
+    fetch("{% url 'users:delete_users' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({ ids })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert("Error deleting users.");
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert("Error deleting users.");
+    });
+}
+
+function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+console.log('User management JavaScript loaded successfully');
+</script>
+{% endblock %}

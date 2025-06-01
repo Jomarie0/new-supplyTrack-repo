@@ -1,0 +1,62 @@
+{% extends "base_auth.html" %}
+{% load static %}
+{% block title %}Verify Email{% endblock %}
+
+{% block content %}
+<h2>Verify Your Email</h2>
+<p>A verification code has been sent to your email. Please enter it below:</p>
+
+<form method="post">
+    {% csrf_token %}
+    <input type="text" name="code" placeholder="Enter verification code" required>
+    <button type="submit">Verify</button>
+</form>
+
+<p id="countdown"></p>
+
+<!-- Resend Code (hidden by default) -->
+<form method="post" action="{% url 'users:resend_code' %}" id="resend-form" style="display:none;">
+    {% csrf_token %}
+    <button type="submit">Resend Code</button>
+</form>
+
+<!-- JS for Countdown and Resend Button -->
+<script>
+  const expiration = {{ expiration_timestamp }};
+  const countdownElem = document.getElementById("countdown");
+  const resendForm = document.getElementById("resend-form");
+
+  function updateCountdown() {
+      const now = new Date().getTime();
+      const distance = expiration - now;
+
+      if (distance > 0) {
+          const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+          countdownElem.innerHTML = `Code expires in ${minutes}m ${seconds}s`;
+      } else {
+          countdownElem.innerHTML = "Code expired.";
+          resendForm.style.display = "block";
+          clearInterval(x);
+      }
+  }
+
+  updateCountdown();  // run once immediately
+  const x = setInterval(updateCountdown, 1000);  // then every second
+</script>
+
+<!-- ✅ Toast message handler -->
+{% if messages %}
+<script id="django-messages-json" type="application/json">
+  [
+    {% for message in messages %}
+      {
+        "message": "{{ message|escapejs }}",
+        "tags": "{{ message.tags }}"
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+</script>
+<script src="{% static 'js/messages.js' %}"></script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,213 @@
+{% extends "base_admin.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+  /* Container */
+  .po-details, .order-items, .add-item-form {
+    max-width: 900px;
+    margin: 20px auto;
+    background: #fff;
+    padding: 20px 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgb(0 0 0 / 0.1);
+  }
+
+  /* Purchase order details */
+  .po-details p {
+    margin: 6px 0;
+    font-size: 1rem;
+  }
+  .po-details pre {
+    background: #f9f9f9;
+    padding: 10px;
+    border-radius: 6px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  /* Table styling */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+  }
+  th, td {
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+  }
+  th {
+    background-color: #f4f6f8;
+  }
+  tbody tr:nth-child(even) {
+    background-color: #fbfbfb;
+  }
+
+  /* Form styling */
+  form label {
+    display: block;
+    margin: 12px 0 5px 0;
+    font-weight: 600;
+  }
+  form input[type="text"],
+  form input[type="number"],
+  form textarea {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    resize: vertical;
+  }
+  form input[readonly] {
+    background-color: #eee;
+  }
+
+  form button {
+    margin-top: 15px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    background-color: #007bff;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+  }
+  form button:hover {
+    background-color: #0056b3;
+  }
+
+  /* Confirm button fixed at bottom-right */
+  #confirm-order-btn {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    background-color: #28a745;
+    border: none;
+    color: white;
+    font-size: 1.1rem;
+    padding: 15px 25px;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 6px 12px rgba(40, 167, 69, 0.5);
+    z-index: 9999;
+    transition: background-color 0.2s ease-in-out;
+  }
+  #confirm-order-btn:hover {
+    background-color: #1e7e34;
+  }
+</style>
+
+<div class="po-details">
+  <h2>Purchase Order Details</h2>
+  <p><strong>PO ID:</strong> {{ purchase_order.purchase_order_id }}</p>
+  <p><strong>Supplier:</strong> {{ supplier.name }}</p>
+  <p><strong>Order Date:</strong> {{ purchase_order.order_date|date:"Y-m-d H:i" }}</p>
+  <p><strong>Expected Delivery:</strong> {{ purchase_order.expected_delivery_date|default:"—" }}</p>
+  <p><strong>Notes:</strong></p>
+  <pre>{{ purchase_order.notes }}</pre>
+</div>
+
+<div class="order-items">
+  <h3>Order Items</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Product Name</th>
+        <th>Description</th>
+        <th>Quantity Ordered</th>
+        <th>Unit Cost</th>
+        <th>Total Cost</th>
+      </tr>
+    </thead>
+    <tbody id="items-table-body">
+      {% for item in items %}
+      <tr>
+        <td>{% if item.product_variant %}{{ item.product_variant.product.name }}{% else %}{{ item.product_name_text }}{% endif %}</td>
+        <td>{{ item.description|default:"-" }}</td>
+        <td>{{ item.quantity_ordered }}</td>
+        <td>{{ item.unit_cost|floatformat:2 }}</td>
+        <td>{{ item.total_price|floatformat:2 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" style="text-align:center;">No items added yet.</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <th colspan="4" style="text-align:right;">Total Cost:</th>
+        <th id="total-cost">{{ purchase_order.total_cost|floatformat:2 }}</th>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<div class="add-item-form">
+  <h4>Add Order Item</h4>
+  <form id="add-item-form" method="POST" action="">
+    {% csrf_token %}
+    <label for="product_name">Product Name:</label>
+    <input type="text" id="product_name" name="product_name" required placeholder="Enter product name">
+
+    <label for="description">Description:</label>
+    <textarea id="description" name="description" rows="2" placeholder="Optional description"></textarea>
+
+    <label for="unit_cost">Unit Cost:</label>
+    <input type="number" id="unit_cost" name="unit_cost" step="0.01" min="0.01" required>
+
+    <label for="quantity">Quantity:</label>
+    <input type="number" id="quantity" name="quantity" min="1" required>
+
+    <label for="total_cost">Total Cost:</label>
+    <input type="number" id="total_cost" name="total_cost" readonly>
+
+    <button type="submit" class="btn btn-primary">Add Order</button>
+  </form>
+</div>
+
+<!-- Confirm Order Button -->
+<form id="confirm-order-form" method="POST" action="" style="display:none;">
+  {% csrf_token %}
+  <input type="hidden" name="confirm_order" value="true">
+</form>
+
+{% if items %}
+    <button id="confirm-order-btn" title="Confirm this purchase order">Confirm Order</button>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const unitCostInput = document.getElementById('unit_cost');
+  const quantityInput = document.getElementById('quantity');
+  const totalCostInput = document.getElementById('total_cost');
+
+  function calculateTotalCost() {
+    const unitCost = parseFloat(unitCostInput.value);
+    const quantity = parseInt(quantityInput.value);
+
+    if (!isNaN(unitCost) && !isNaN(quantity)) {
+      totalCostInput.value = (unitCost * quantity).toFixed(2);
+    } else {
+      totalCostInput.value = '';
+    }
+  }
+
+  unitCostInput.addEventListener('input', calculateTotalCost);
+  quantityInput.addEventListener('input', calculateTotalCost);
+
+  // Confirm order button behavior
+  const confirmBtn = document.getElementById('confirm-order-btn');
+  const confirmForm = document.getElementById('confirm-order-form');
+
+  confirmBtn.addEventListener('click', function () {
+    if (confirm('Are you sure you want to confirm this purchase order?')) {
+      confirmForm.submit();
+    }
+  });
+});
+</script>
+{% endblock %}

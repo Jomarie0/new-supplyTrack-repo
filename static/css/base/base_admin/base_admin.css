@@ -1,0 +1,193 @@
+/* Layout Reset */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+}
+
+/* Sidebar styles */
+.sidebar {
+    width: 220px;
+    background-color: #f5f5f5;
+    height: 100vh;
+    padding-top: 20px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    overflow-y: auto;
+    border-right: 1px solid #ddd;
+    transition: transform 0.3s ease;
+}
+
+.sidebar-nav {
+    padding: 0;
+}
+
+.menu {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+.menu-item,
+.submenu-item {
+    display: block;
+    padding: 10px 20px;
+    color: #333;
+    text-decoration: none;
+}
+
+.menu-item:hover,
+.submenu-item:hover {
+    background-color: #e0e0e0;
+}
+
+/* Dropdown Button */
+.dropdown .dropdown-toggle {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    font: inherit;
+    padding: 10px 20px;
+    cursor: pointer;
+    color: #333;
+}
+
+/* Dropdown Menu Styling */
+.dropdown-menu {
+    display: none;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    margin-top: 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+}
+
+/* Show dropdown when open */
+.dropdown-menu.open {
+    display: block;
+    animation: dropdown-fade 0.2s ease-in-out;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* Arrow icon rotation */
+.dropdown-icon {
+    display: inline-block;
+    margin-left: 8px;
+    transition: transform 0.3s ease;
+}
+
+/* Rotated when open */
+.dropdown-icon.rotated {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+}
+
+.dropdown-toggle::after {
+    display: none !important;
+}
+
+.arrow-icon {
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+.arrow-icon.rotate {
+    transform: rotate(180deg);
+}
+
+
+@keyframes dropdown-fade {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Dropdown links */
+.dropdown-menu li a {
+    display: block;
+    padding: 10px 20px;
+    color: #333;
+    text-decoration: none;
+}
+
+.dropdown-menu li a:hover {
+    background-color: #f0f0f0;
+}
+
+/* Fallback hidden class */
+.hidden {
+    display: none;
+}
+
+/* Main content */
+#content {
+    margin-left: 220px;
+    padding: 20px;
+    flex-grow: 1;
+    width: calc(100% - 220px);
+}
+
+/* Toggle Button (for small screens) */
+.btn-toggle {
+    display: none;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1000;
+    background: #444;
+    color: #fff;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+/* Toast styling (optional for context) */
+.toast-info {
+    background-color: #e3f2fd;
+    border-left: 8px solid #2196f3;
+}
+
+.toast-warning {
+    background-color: #fff8e1;
+    border-left: 8px solid #ff9800;
+}
+
+/* Responsive layout */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        position: fixed;
+        z-index: 999;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    #content {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .btn-toggle {
+        display: block;
+    }
+}

@@ -1,0 +1,44 @@
+{% extends "base_store.html" %} {# Ensure this path is correct #}
+{% load static %}
+
+{% block title %} Home {% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" href="{% static 'css/store/store_view.css' %}">
+    {% if request.user.is_authenticated%}
+        <h1>Welcome back, {{ request.user.first_name|default:request.user.username }}!</h1>
+    {% else %}
+        <h1>Customer</h1>
+    {% endif %}
+    <p>This is the product list content.</p>
+    {# ... Your actual product listing HTML goes here ... #}
+    <div class="product-grid">
+        {% if products %}
+            {% for product in products %}
+                <div class="product-card">
+                    <a href="{% url 'store:product_detail' slug=product.slug %}">
+                        {% if product.image %}
+                            <img src="{{ product.image.url }}" alt="{{ product.name }}">
+                        {% else %}
+                            <img src="https://via.placeholder.com/150" alt="No Image">
+                        {% endif %}
+                        <h2>{{ product.name }}</h2>
+                        <p>₱{{ product.price|floatformat:2 }}</p>
+                    </a>
+                    <form action="{% url 'store:add_to_cart' product_id=product.id %}" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="quantity" value="1"> {# Default to 1 item #}
+                        <button type="submit" class="add-to-cart-btn" 
+                                {% if product.stock_quantity <= 0 %}disabled{% endif %}>
+                            {% if product.stock_quantity > 0 %}Add to Cart{% else %}Out of Stock{% endif %}
+                        </button>
+                    </form>
+                </div>
+                
+            {% endfor %}
+        {% else %}
+            <p>No products available in this section yet.</p>
+        {% endif %}
+    </div>
+
+{% endblock %}

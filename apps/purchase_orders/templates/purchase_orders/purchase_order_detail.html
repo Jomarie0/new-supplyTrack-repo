@@ -1,0 +1,70 @@
+<!-- Modal -->
+<div class="modal fade" id="purchaseOrderModal" tabindex="-1" aria-labelledby="purchaseOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <form method="post" id="purchaseOrderForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="purchaseOrderModalLabel">Purchase Order</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <!-- Main PO Fields -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            {{ form.supplier.label_tag }} {{ form.supplier }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.order_date.label_tag }} {{ form.order_date }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.expected_delivery.label_tag }} {{ form.expected_delivery }}
+                        </div>
+                        <div class="col-md-3 mt-2">
+                            {{ form.status.label_tag }} {{ form.status }}
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- PO Items -->
+                    <div class="container">
+                        <div class="row mb-2">
+                            <h6 class="text-center">Items</h6>
+                        </div>
+
+                        <div id="items-container">
+                            {{ formset.management_form }}
+                            {% for form in formset %}
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-4">
+                                    {{ form.product.label_tag }} {{ form.product }}
+                                </div>
+                                <div class="col-md-3">
+                                    {{ form.quantity.label_tag }} {{ form.quantity }}
+                                </div>
+                                <div class="col-md-3">
+                                    {{ form.unit_price.label_tag }} {{ form.unit_price }}
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-danger remove-item">Remove</button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="text-end">
+                            <button type="button" id="add-item" class="btn btn-secondary">+ Add Item</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Order</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

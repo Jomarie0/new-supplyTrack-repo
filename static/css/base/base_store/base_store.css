@@ -1,0 +1,155 @@
+/* Layout Reset */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header styles */
+header {
+    background-color: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+    padding: 10px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo a {
+    text-decoration: none;
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #333;
+}
+
+.nav-links {
+    list-style-type: none;
+    display: flex;
+    gap: 15px;
+    padding: 0;
+    margin: 0;
+}
+
+.nav-links li a {
+    text-decoration: none;
+    color: #333;
+    padding: 8px 12px;
+}
+
+.nav-links li a:hover {
+    background-color: #e0e0e0;
+    border-radius: 4px;
+}
+
+/* Main content */
+main, .content-wrapper {
+    padding: 20px;
+    flex-grow: 1;
+}
+
+/* Cart count badge */
+#anon-cart-count {
+    font-weight: bold;
+}
+
+/* Toast Notifications */
+.toast-info {
+    background-color: #e3f2fd;
+    border-left: 8px solid #2196f3;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.toast-warning {
+    background-color: #fff8e1;
+    border-left: 8px solid #ff9800;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+/* Responsive nav */
+@media (max-width: 768px) {
+    nav {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .nav-links {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .nav-links li {
+        width: 100%;
+    }
+
+    .nav-links li a {
+        display: block;
+        width: 100%;
+    }
+}
+
+.toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.toast {
+  background: white;
+  border-left: 6px solid #2196f3;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  color: #333;
+  display: flex;
+  align-items: center;
+  transform: translateX(100%);
+  opacity: 0;
+  transition: all 0.4s ease;
+  min-width: 250px;
+  max-width: 400px;
+}
+
+.toast.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.toast-success {
+  background-color: #e8f9e4;
+  border-left-color: #4caf50;
+}
+
+.toast-error {
+  background-color: #ffe8e6;
+  border-left-color: #f44336;
+}
+
+.toast-icon {
+  font-size: 20px;
+  margin-right: 10px;
+}
+
+.toast-close {
+  margin-left: auto;
+  font-size: 18px;
+  background: transparent;
+  border: none;
+  color: #555;
+  cursor: pointer;
+}
+
